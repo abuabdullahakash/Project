@@ -2,7 +2,10 @@ import { initializeApp, getApps } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import firebaseConfigJSON from "../../firebase-applet-config.json";
+
+// Safely load firebase-applet-config.json if present without failing build if gitignored/missing
+const rawConfigs = import.meta.glob('../../firebase-applet-config.json', { eager: true }) as Record<string, { default?: Record<string, string> }>;
+const firebaseConfigJSON = Object.values(rawConfigs)[0]?.default || {};
 
 const config = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigJSON?.apiKey,

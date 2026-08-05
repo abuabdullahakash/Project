@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Menu, LogIn, LogOut, BookOpen, LayoutDashboard, Shield, Image, Users, Sun, Moon, Bell, Code2, Download, GraduationCap } from 'lucide-react';
+import { Plus, Menu, LogIn, LogOut, BookOpen, LayoutDashboard, Shield, Image, Users, Sun, Moon, Bell, Code2, GraduationCap } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { GlobalNotesDrawer } from './GlobalNotesDrawer';
@@ -295,24 +295,6 @@ export function Layout({
               >
                 {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
               </button>
-
-              {/* Install PWA Button (Desktop Only) */}
-              {!isStandalone && (
-                <button
-                  onClick={handleInstallClick}
-                  className={`hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all shrink-0 ${
-                    theme === 'dark'
-                      ? 'bg-amber-500/10 text-amber-300 border border-amber-500/20 hover:bg-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.15)]'
-                      : 'bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 shadow-sm'
-                  }`}
-                  title={isIframe ? "নতুন ট্যাবে খুলে ইন্সটল করুন (Open in new tab to install)" : "অ্যাপ হিসেবে ইন্সটল করুন (Install as App)"}
-                >
-                  <Download size={14} className="animate-bounce" />
-                  <span>
-                    {isIframe ? 'Open to Install' : 'Install App'}
-                  </span>
-                </button>
-              )}
 
               <div className="w-px h-4 bg-slate-200 dark:bg-red-900/50 mx-1"></div>
 
