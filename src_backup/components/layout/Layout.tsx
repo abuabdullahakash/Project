@@ -1,0 +1,257 @@
+import React, { useState } from 'react';
+import { Plus, Menu, LogIn, LogOut, BookOpen, LayoutDashboard, Shield, Image, Users, Sun, Moon, Bell } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
+import { useTheme } from '../../context/ThemeContext';
+import { GlobalNotesDrawer } from './GlobalNotesDrawer';
+import { NotificationDrawer } from './NotificationDrawer';
+import { Sidebar } from './Sidebar';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { useEffect } from 'react';
+import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
+
+interface LayoutProps {
+  children: React.ReactNode;
+  onNewProject: () => void;
+  isSidebarOpen: boolean;
+  onOpenSidebar: () => void;
+  onCloseSidebar: () => void;
+  currentView?: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates';
+  onNavigate?: (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates', teamId?: string, chat?: boolean) => void;
+  isNotesOpen?: boolean;
+  onOpenNotes?: () => void;
+  onCloseNotes?: () => void;
+}
+
+export function Layout({ 
+  children, 
+  onNewProject, 
+  isSidebarOpen,
+  onOpenSidebar, 
+  onCloseSidebar,
+  currentView = 'dashboard', 
+  onNavigate,
+  isNotesOpen = false,
+  onOpenNotes,
+  onCloseNotes
+}: LayoutProps) {
+  const { user, signIn, logOut, isConfigured, isAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const initialLoadRef = React.useRef(true);
+  const onNavigateRef = React.useRef(onNavigate);
+
+  useEffect(() => {
+    onNavigateRef.current = onNavigate;
+  }, [onNavigate]);
+
+  useEffect(() => {
+    if (!db || !user) return;
+
+    initialLoadRef.current = true;
+
+    // Request notification permission if not already granted or denied
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', user.uid),
+      where('read', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.size);
+
+      // Trigger system notifications for new messages
+      if (!initialLoadRef.current && 'Notification' in window && Notification.permission === 'granted') {
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const data = change.doc.data();
+            const title = data.title || 'New Notification';
+            const options = {
+              body: data.message || '',
+              icon: '/favicon.svg',
+              badge: '/favicon.svg',
+              vibrate: [200, 100, 200],
+              data: {
+                url: data.teamId ? `/?teamId=${data.teamId}&chat=true` : '/'
+              }
+            };
+
+            try {
+              // Try standard desktop notification first
+              const notification = new Notification(title, options);
+              notification.onclick = () => {
+                window.focus();
+                if (data.teamId && onNavigateRef.current) {
+                  onNavigateRef.current('team-dashboard', data.teamId, true);
+                }
+                notification.close();
+              };
+            } catch (e) {
+              // Mobile browsers (like Chrome for Android) throw a TypeError on `new Notification()`
+              // They require using the Service Worker registration instead.
+              if (e instanceof TypeError && 'serviceWorker' in navigator) {
+                navigator.serviceWorker.ready.then((registration) => {
+                  registration.showNotification(title, options);
+                }).catch((swError) => {
+                  console.error('Service Worker notification failed:', swError);
+                });
+              } else {
+                console.error('Error showing notification:', e);
+              }
+            }
+          }
+        });
+      }
+
+      initialLoadRef.current = false;
+    });
+
+    return () => unsubscribe();
+  }, [user]);
+
+  useBodyScrollLock(isSidebarOpen || isNotificationsOpen);
+
+  return (
+    <div className={`min-h-screen transition-all duration-500 ${
+      theme === 'dark' ? 'bg-[#020617] text-slate-300' : 'bg-[#f1f5f9] text-slate-600'
+    } font-sans selection:bg-red-500/30 flex flex-col`}>
+      {/* Premium Glassmorphic Header */}
+      <header className={`sticky top-0 z-40 w-full backdrop-blur-2xl border-b transition-all duration-500 ${
+        theme === 'dark' 
+          ? 'bg-red-950/40 border-red-900/50 shadow-[0_4px_30px_rgba(127,29,29,0.1)]' 
+          : 'bg-white/80 border-slate-200 shadow-sm'
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            {/* Left side: Menu & Logo */}
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={onOpenSidebar}
+                className={`p-2 rounded-full transition-all ${
+                  theme === 'dark' 
+                    ? 'text-red-200/70 hover:text-white hover:bg-red-900/50' 
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+              >
+                <Menu size={20} />
+              </button>
+              
+              <div 
+                className="flex items-center gap-3 cursor-pointer group"
+                onClick={() => onNavigate?.('dashboard')}
+              >
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/20 group-hover:shadow-red-500/40 transition-all">
+                  <LayoutDashboard size={16} className="text-white" />
+                </div>
+                <h1 className={`text-xl font-bold tracking-tight hidden sm:block ${
+                  theme === 'dark' ? 'text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-rose-400' : 'text-slate-900'
+                }`}>
+                  Project<span className={theme === 'dark' ? 'text-white font-medium' : 'text-red-600 font-medium'}>Hub</span>
+                </h1>
+              </div>
+            </div>
+
+              {/* Right side: Actions */}
+            <div className="flex items-center gap-2 sm:gap-4">
+              {/* Global Notes (Desktop Only) */}
+              {user && (
+                <button 
+                  onClick={onOpenNotes}
+                  className={`hidden md:flex p-2 rounded-full transition-all relative ${
+                    theme === 'dark' 
+                      ? 'text-red-200/70 hover:text-white hover:bg-red-900/50' 
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Global Notes & Links"
+                >
+                  <BookOpen size={18} />
+                </button>
+              )}
+
+              {/* Notifications */}
+              {user && (
+                <button 
+                  onClick={() => setIsNotificationsOpen(true)}
+                  className={`p-2 rounded-full transition-all relative ${
+                    theme === 'dark' 
+                      ? 'text-red-200/70 hover:text-white hover:bg-red-900/50' 
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Notifications"
+                >
+                  <Bell size={18} />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-red-950/40 shadow-[0_0_8px_rgba(239,68,68,0.5)]"></span>
+                  )}
+                </button>
+              )}
+
+              {/* Theme Toggle */}
+              <button 
+                onClick={toggleTheme}
+                className={`p-2 rounded-full transition-all ${
+                  theme === 'dark' 
+                    ? 'text-red-200/70 hover:text-white hover:bg-red-900/50' 
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+              </button>
+
+              <div className="w-px h-4 bg-slate-200 dark:bg-red-900/50 mx-1"></div>
+
+              {user && (
+                <button 
+                  onClick={onNewProject}
+                  className="bg-red-600 text-white hover:bg-red-500 px-4 sm:px-5 py-2 rounded-full flex items-center justify-center gap-2 font-semibold transition-all text-xs uppercase tracking-wider shadow-[0_0_15px_rgba(220,38,38,0.3)] hover:shadow-[0_0_20px_rgba(220,38,38,0.5)]"
+                >
+                  <Plus size={16} /> <span className="hidden sm:inline-block">New Project</span>
+                </button>
+              )}
+
+              {!user && isConfigured && (
+                <button onClick={signIn} className={`text-xs font-semibold uppercase tracking-wider transition-colors flex items-center gap-2 px-4 py-2 rounded-full border border-transparent ${
+                  theme === 'dark' ? 'text-red-200/80 hover:text-white hover:bg-red-900/30' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                }`}>
+                  <LogIn size={16} /> Sign In
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+        {children}
+      </main>
+
+      {/* Global Sidebar */}
+      <Sidebar 
+        isOpen={isSidebarOpen}
+        onClose={onCloseSidebar}
+        currentView={currentView}
+        onNavigate={onNavigate || (() => {})}
+        onOpenNotes={onOpenNotes || (() => {})}
+      />
+
+      <GlobalNotesDrawer 
+        isOpen={isNotesOpen} 
+        onClose={onCloseNotes || (() => {})} 
+      />
+
+      <NotificationDrawer 
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        onNavigate={onNavigate}
+      />
+    </div>
+  );
+}
+

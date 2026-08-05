@@ -1,0 +1,310 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user of the application",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "manager", "leader", "co-leader", "member", "user"] },
+        "teamId": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role", "createdAt", "lastLoginAt"]
+    },
+    "Team": {
+      "title": "Team",
+      "description": "A team within the department",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "managerIds": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "leaderId": { "type": "string" },
+        "coLeaderId": { "type": "string" },
+        "memberIds": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allMembers": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "name", "createdAt", "updatedAt", "allMembers"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A project managed by the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "assignedBy": { "type": "string" },
+        "teamId": { "type": "string" },
+        "assignmentStatus": { "type": "string", "enum": ["unassigned", "pending", "accepted", "rejected"] },
+        "title": { "type": "string" },
+        "clientName": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "priority": { "type": "string", "enum": ["High", "Medium", "Low"] },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "stage": { "type": "string", "enum": ["First Stage", "Middle Stage", "Final Stage", "Delivered"] },
+        "status": { "type": "string", "enum": ["Active", "Revision", "Delivered"] },
+        "createdAt": { "type": "string" },
+        "deliveredAt": { "type": "string" },
+        "lastUpdatedAt": { "type": "string" },
+        "websiteLink": { "type": "string" },
+        "clientRating": { "type": "number" },
+        "notes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "content": { "type": "string" },
+              "timestamp": { "type": "string" },
+              "tags": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        },
+        "additionalLinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        }
+      },
+      "required": ["id", "userId", "title", "clientName", "price", "priority", "startDate", "endDate", "stage", "status", "createdAt", "lastUpdatedAt"]
+    },
+    "GlobalNote": {
+      "title": "GlobalNote",
+      "description": "A global note or link created by the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "url": { "type": "string" },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "createdAt", "updatedAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A user notification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "type": { "type": "string", "enum": ["info", "success", "warning", "error"] },
+        "read": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "link": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "message", "type", "read", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "A message in a team chat",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "teamId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderPhoto": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "teamId", "senderId", "senderName", "content", "timestamp"]
+    },
+    "Todo": {
+      "title": "Todo",
+      "description": "A standalone to-do task for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["High", "Medium", "Low"] },
+        "dueDate": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "completed", "priority", "createdAt", "updatedAt"]
+    },
+    "PushSubscription": {
+      "title": "PushSubscription",
+      "description": "A web push subscription for a user",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "subscription": { "type": "object" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "subscription", "createdAt"]
+    },
+    "PortfolioSettings": {
+      "title": "PortfolioSettings",
+      "description": "User portfolio settings and content",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "title": { "type": "string" },
+        "bio": { "type": "string" },
+        "about": { "type": "string" },
+        "skills": { 
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "email": { "type": "string" },
+        "github": { "type": "string" },
+        "linkedin": { "type": "string" },
+        "twitter": { "type": "string" },
+        "website": { "type": "string" },
+        "heroImage": { "type": "string" },
+        "logo": { "type": "string" },
+        "showcaseProjects": { "type": "boolean" },
+        "updatedAt": { "type": "string" },
+        "plugins": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "shortDescription": { "type": "string" },
+              "fullDescription": { "type": "string" },
+              "activeInstalls": { "type": "string" },
+              "rating": { "type": "string" },
+              "image": { "type": "string" },
+              "liveLink": { "type": "string" },
+              "wpOrgLink": { "type": "string" },
+              "features": {
+                "type": "array",
+                "items": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Course": {
+      "title": "Course",
+      "description": "An educational course created by the user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "year": { "type": "string" },
+        "code": { "type": "string" },
+        "credit": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "chapters": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "year", "createdAt", "updatedAt"]
+    },
+    "EducationalNote": {
+      "title": "EducationalNote",
+      "description": "An AI chat note or lesson within a course",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "courseId": { "type": "string" },
+        "userId": { "type": "string" },
+        "chatTitle": { "type": "string" },
+        "categories": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "chapter": { "type": "string" },
+        "question": { "type": "string" },
+        "gmail": { "type": "string" },
+        "aiProvider": { "type": "string" },
+        "chatLink": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "courseId", "userId", "chatTitle", "categories", "chapter", "question", "gmail", "aiProvider", "createdAt", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "User" },
+      "description": "User profiles and roles"
+    },
+    "/teams/{teamId}": {
+      "schema": { "$ref": "Team" },
+      "description": "Teams within the department"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "Project" },
+      "description": "User projects"
+    },
+    "/globalNotes/{noteId}": {
+      "schema": { "$ref": "GlobalNote" },
+      "description": "User global notes"
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "Notification" },
+      "description": "User notifications"
+    },
+    "/teams/{teamId}/messages/{messageId}": {
+      "schema": { "$ref": "ChatMessage" },
+      "description": "Team chat messages"
+    },
+    "/todos/{todoId}": {
+      "schema": { "$ref": "Todo" },
+      "description": "User to-do list items"
+    },
+    "/pushSubscriptions/{subscriptionId}": {
+      "schema": { "$ref": "PushSubscription" },
+      "description": "User web push subscriptions"
+    },
+    "/portfolios/{userId}": {
+      "schema": { "$ref": "PortfolioSettings" },
+      "description": "User portfolio settings"
+    },
+    "/courses/{courseId}": {
+      "schema": { "$ref": "Course" },
+      "description": "Educational courses"
+    },
+    "/educationalNotes/{noteId}": {
+      "schema": { "$ref": "EducationalNote" },
+      "description": "AI study notes per course"
+    }
+  }
+}
