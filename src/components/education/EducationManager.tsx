@@ -842,26 +842,26 @@ export function EducationManager() {
   };
 
   return (
-    <div className={`p-6 min-h-screen transition-colors duration-200 ${
+    <div className={`p-0 sm:p-6 min-h-screen transition-colors duration-200 ${
       theme === 'dark' ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
     }`} id="educational-workspace-container">
       
       {/* Header with Motivation Section */}
-      <div className="flex flex-col lg:flex-row gap-6 mb-8">
+      <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
         
         {/* Welcome & Motivational Quote */}
-        <div className={`flex-1 p-6 rounded-2xl border flex flex-col justify-between transition-all ${
+        <div className={`flex-1 p-4 sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
         }`}>
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/20 shrink-0">
                 <GraduationCap size={22} />
               </div>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">AI Educational Workspace</h1>
+                <h1 className="text-xl sm:text-2xl font-bold tracking-tight">AI Educational Workspace</h1>
                 <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                   Track, organize, and recall insights from your AI study chats
                 </p>
@@ -875,9 +875,9 @@ export function EducationManager() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
                 transition={{ duration: 0.4 }}
-                className="mt-4"
+                className="mt-3 sm:mt-4"
               >
-                <p className={`text-lg italic font-medium leading-relaxed font-serif ${
+                <p className={`text-base sm:text-lg italic font-medium leading-relaxed font-serif ${
                   theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
                 }`}>
                   "{MOTIVATIONAL_QUOTES[currentQuoteIndex].text}"
@@ -889,25 +889,25 @@ export function EducationManager() {
             </AnimatePresence>
           </div>
 
-          <div className="flex items-center gap-6 mt-6 pt-4 border-t border-slate-200/50 dark:border-white/5">
+          <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 mt-5 pt-4 border-t border-slate-200/50 dark:border-white/5">
             <div className="flex items-center gap-2">
-              <Flame className="text-orange-500 animate-pulse" size={20} />
+              <Flame className="text-orange-500 animate-pulse shrink-0" size={18} />
               <div>
-                <span className="text-xs block text-slate-400">Current Streak</span>
-                <span className={`font-bold text-sm ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{streakCount} Days Focused</span>
+                <span className="text-[10px] sm:text-xs block text-slate-400">Current Streak</span>
+                <span className={`font-bold text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{streakCount} Days Focused</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Trophy className="text-yellow-500" size={20} />
+              <Trophy className="text-yellow-500 shrink-0" size={18} />
               <div>
-                <span className="text-xs block text-slate-400">Notes Logged</span>
-                <span className={`font-bold text-sm ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{notes.length} Sessions</span>
+                <span className="text-[10px] sm:text-xs block text-slate-400">Notes Logged</span>
+                <span className={`font-bold text-xs sm:text-sm ${theme === 'dark' ? 'text-slate-100' : 'text-slate-800'}`}>{notes.length} Sessions</span>
               </div>
             </div>
-            <div className="ml-auto">
+            <div className="w-full sm:w-auto sm:ml-auto">
               <button 
                 onClick={() => setStreakCount(prev => prev + 1)}
-                className="text-[10px] bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold px-3 py-1.5 rounded-full transition-all border border-indigo-500/20"
+                className="w-full sm:w-auto text-center text-[10px] sm:text-xs bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 font-bold px-3 py-1.5 rounded-full transition-all border border-indigo-500/20 shrink-0"
               >
                 + Complete Study
               </button>
@@ -916,7 +916,7 @@ export function EducationManager() {
         </div>
 
         {/* Elegant Pomodoro Focus Timer Widget */}
-        <div className={`w-full lg:w-80 p-6 rounded-2xl border flex flex-col justify-between transition-all ${
+        <div className={`w-full lg:w-80 p-4 sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
