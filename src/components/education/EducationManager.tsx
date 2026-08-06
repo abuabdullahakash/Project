@@ -1118,49 +1118,48 @@ export function EducationManager() {
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto shrink-0">
           {/* Dynamic Filters shown only in detailed course page or global notes lookup */}
           {selectedCourse && (
-            <>
-              <div className="flex items-center gap-1.5">
-                <Filter size={14} className="text-slate-400" />
-                <span className="text-xs text-slate-400 font-medium">Chapter:</span>
+            <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
+              <div className="flex items-center gap-1.5 bg-slate-500/5 p-1.5 rounded-xl border border-slate-200/50 dark:border-white/5">
+                <Filter size={13} className="text-indigo-400 shrink-0 ml-1" />
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none ${
-                    theme === 'dark' ? 'bg-[#1e293b] border-white/5 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  className={`w-full text-xs font-semibold py-1 px-1 rounded-lg border-0 focus:outline-none bg-transparent cursor-pointer ${
+                    theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
                   }`}
                 >
-                  <option value="all">All Chapters</option>
+                  <option value="all" className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>All Chapters</option>
                   {(selectedCourse.chapters || []).map((ch, i) => (
-                    <option key={i} value={ch}>{ch}</option>
+                    <option key={i} value={ch} className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>{ch}</option>
                   ))}
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-slate-400 font-medium">AI Provider:</span>
+              <div className="flex items-center gap-1.5 bg-slate-500/5 p-1.5 rounded-xl border border-slate-200/50 dark:border-white/5">
+                <Sparkles size={13} className="text-indigo-400 shrink-0 ml-1" />
                 <select
                   value={filterProvider}
                   onChange={(e) => setFilterProvider(e.target.value)}
-                  className={`text-xs px-2.5 py-1.5 rounded-lg border focus:outline-none ${
-                    theme === 'dark' ? 'bg-[#1e293b] border-white/5 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-700'
+                  className={`w-full text-xs font-semibold py-1 px-1 rounded-lg border-0 focus:outline-none bg-transparent cursor-pointer ${
+                    theme === 'dark' ? 'text-slate-200' : 'text-slate-700'
                   }`}
                 >
-                  <option value="all">All Providers</option>
+                  <option value="all" className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>All Providers</option>
                   {AI_PROVIDERS.map(p => (
-                    <option key={p} value={p}>{p}</option>
+                    <option key={p} value={p} className={theme === 'dark' ? 'bg-slate-900 text-slate-200' : 'bg-white text-slate-800'}>{p}</option>
                   ))}
                 </select>
               </div>
-            </>
+            </div>
           )}
 
           {!selectedCourse && (
             <button
               onClick={() => openCourseModal()}
-              className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md shadow-indigo-600/10 hover:-translate-y-0.5"
+              className="ml-auto bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-600/10 hover:-translate-y-0.5 w-full sm:w-auto"
             >
               <Plus size={14} /> Add New Course
             </button>
@@ -1361,14 +1360,14 @@ export function EducationManager() {
               </div>
 
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                <div className="flex items-center gap-4">
+                <div className="flex items-start gap-3 sm:gap-4">
                   <button
                     onClick={() => {
                       setSelectedCourse(null);
                       setFilterCategory('all');
                       setFilterProvider('all');
                     }}
-                    className={`p-2.5 rounded-xl border transition-all ${
+                    className={`p-2.5 rounded-xl border transition-all shrink-0 mt-0.5 ${
                       theme === 'dark' 
                         ? 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-200' 
                         : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
@@ -1376,8 +1375,8 @@ export function EducationManager() {
                   >
                     <ChevronLeft size={16} />
                   </button>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5 mb-1">
                       <span className="text-[10px] bg-indigo-500/20 text-indigo-400 font-extrabold px-2.5 py-0.5 rounded border border-indigo-500/20 uppercase tracking-widest">
                         {selectedCourse.year}
                       </span>
@@ -1390,10 +1389,10 @@ export function EducationManager() {
                         Course Module
                       </span>
                     </div>
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-2xl font-bold tracking-tight">{selectedCourse.name}</h2>
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <h2 className="text-xl sm:text-2xl font-bold tracking-tight">{selectedCourse.name}</h2>
                       {selectedCourse.credit && (
-                        <span className="text-xs bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-400 font-bold px-2.5 py-1 rounded-full border border-indigo-500/25 whitespace-nowrap mt-1">
+                        <span className="text-xs bg-indigo-500/10 dark:bg-indigo-500/20 text-indigo-400 font-bold px-2.5 py-0.5 rounded-full border border-indigo-500/25 whitespace-nowrap">
                           {selectedCourse.credit.toLowerCase().includes('credit') ? selectedCourse.credit : `${selectedCourse.credit} Credits`}
                         </span>
                       )}
@@ -1401,17 +1400,17 @@ export function EducationManager() {
                   </div>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="grid grid-cols-2 sm:flex gap-2 w-full md:w-auto pt-2 md:pt-0 border-t md:border-t-0 border-slate-200/50 dark:border-white/5">
                   <button
                     onClick={openChaptersManager}
-                    className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all ${
+                    className={`px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 border transition-all ${
                       theme === 'dark' 
                         ? 'border-white/5 bg-white/5 hover:bg-white/10 text-slate-200' 
                         : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
                     }`}
                   >
-                    <Settings size={14} className="text-slate-400" />
-                    <span>Manage Chapters</span>
+                    <Settings size={14} className="text-slate-400 shrink-0" />
+                    <span className="truncate">Manage Chapters</span>
                   </button>
                   <button
                     onClick={() => {
@@ -1428,15 +1427,16 @@ export function EducationManager() {
                       setNewLinkUrl('');
                       setIsNoteModalOpen(true);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all shadow-md shadow-indigo-600/10 hover:-translate-y-0.5"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs px-4 py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md shadow-indigo-600/10 hover:-translate-y-0.5"
                   >
-                    <Plus size={14} /> Add New Note
+                    <Plus size={14} className="shrink-0" />
+                    <span className="truncate">Add New Note</span>
                   </button>
                 </div>
               </div>
             </div>
 
-            {/* AI Notes Table */}
+            {/* AI Notes Table / Cards */}
             <div className={`border rounded-2xl overflow-hidden ${
               theme === 'dark' ? 'bg-[#111827] border-white/5 shadow-lg' : 'bg-white border-slate-200 shadow-sm'
             }`}>
@@ -1447,13 +1447,156 @@ export function EducationManager() {
                 </span>
                 
                 {searchQuery && (
-                  <span className="text-[10px] bg-slate-500/10 text-slate-400 px-2 py-0.5 rounded font-medium">
+                  <span className="text-[10px] bg-slate-500/10 text-slate-400 px-2 py-0.5 rounded font-medium truncate max-w-[150px] sm:max-w-none">
                     Filtered by: "{searchQuery}"
                   </span>
                 )}
               </div>
 
-              <div className="overflow-x-auto">
+              {/* Mobile Note Cards View (Visible on Small Screens) */}
+              <div className="block md:hidden p-3 space-y-3">
+                {filteredNotes.length === 0 ? (
+                  <div className="text-center py-8 text-xs text-slate-400">
+                    <HelpCircle className="mx-auto text-slate-500 mb-2" size={28} />
+                    No educational notes saved for this course yet or matching your search.
+                  </div>
+                ) : (
+                  filteredNotes.map((note) => {
+                    const courseNotes = selectedCourse 
+                      ? notes.filter(n => n.courseId === selectedCourse.id)
+                      : notes;
+                    const serialIndex = courseNotes.findIndex(n => n.id === note.id) + 1;
+                    const serialFormatted = serialIndex > 0 ? (serialIndex < 10 ? `0${serialIndex}` : `${serialIndex}`) : '01';
+
+                    return (
+                      <div 
+                        key={note.id}
+                        className={`p-3.5 rounded-xl border space-y-3 transition-all ${
+                          theme === 'dark'
+                            ? 'bg-black/20 border-white/5 text-slate-200'
+                            : 'bg-slate-50/70 border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        {/* Top Row: Serial # + AI Provider + Question Count */}
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-mono font-extrabold border ${
+                              theme === 'dark'
+                                ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                            }`}>
+                              #{serialFormatted}
+                            </span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
+                              note.aiProvider === 'ChatGPT' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                              note.aiProvider === 'Gemini' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                              note.aiProvider === 'Google AI Studio' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
+                              note.aiProvider === 'Claude' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                              'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                            }`}>
+                              {note.aiProvider}
+                            </span>
+                          </div>
+
+                          <span className={`text-[11px] font-mono font-extrabold px-2 py-0.5 rounded border ${
+                            theme === 'dark'
+                              ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                          }`}>
+                            ({note.questionCount || 1}টি প্রশ্ন)
+                          </span>
+                        </div>
+
+                        {/* Title Row */}
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-bold text-sm leading-snug flex-1 text-slate-900 dark:text-slate-100">
+                            {note.chatTitle}
+                          </h4>
+                          <button
+                            onClick={() => handleCopyChatTitle(note.chatTitle, note.id)}
+                            className="p-1.5 hover:bg-slate-500/10 rounded text-slate-400 hover:text-indigo-400 shrink-0"
+                            title="Copy Chat Title"
+                          >
+                            {copiedId === note.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                          </button>
+                        </div>
+
+                        {/* Chapter & Categories */}
+                        <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                          <span className={`px-2 py-0.5 rounded font-bold ${
+                            theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-200 text-slate-700'
+                          }`}>
+                            {note.chapter}
+                          </span>
+                          {note.categories.map((cat, i) => (
+                            <span key={i} className="px-1.5 py-0.5 rounded uppercase font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Gmail */}
+                        {note.gmail && (
+                          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
+                            <Mail size={12} className="shrink-0" />
+                            <span className="truncate">{note.gmail}</span>
+                          </div>
+                        )}
+
+                        {/* Question snippet */}
+                        <p className="text-xs text-slate-400 dark:text-slate-300 line-clamp-2 bg-black/5 dark:bg-black/20 p-2 rounded-lg border border-slate-200/50 dark:border-white/5">
+                          {note.question}
+                        </p>
+
+                        {/* Action Toolbar */}
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-white/5 text-xs">
+                          <span className="text-[10px] text-slate-400">
+                            {new Date(note.createdAt).toLocaleDateString()}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => {
+                                setActiveViewNote(note);
+                                setIsViewNoteModalOpen(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold flex items-center gap-1"
+                            >
+                              <FileText size={13} />
+                              <span>View</span>
+                            </button>
+                            {note.chatLink && (
+                              <a
+                                href={note.chatLink}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="px-2.5 py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-500 font-bold flex items-center gap-1"
+                              >
+                                <ExternalLink size={13} />
+                                <span>Chat</span>
+                              </a>
+                            )}
+                            <button
+                              onClick={() => handleEditNoteTrigger(note)}
+                              className="p-1.5 text-slate-400 hover:text-slate-200"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteNote(note.id)}
+                              className="p-1.5 text-slate-400 hover:text-red-400"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Desktop Table View */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className={`text-xs font-bold uppercase tracking-wider border-b ${
@@ -1673,12 +1816,12 @@ export function EducationManager() {
       {/* ==================== CREATE/EDIT COURSE MODAL ==================== */}
       <AnimatePresence>
         {isCourseModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-lg rounded-2xl border p-6 overflow-hidden shadow-2xl relative ${
+              className={`w-full max-w-lg rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative overflow-hidden ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -1916,12 +2059,12 @@ export function EducationManager() {
       {/* ==================== CREATE/EDIT NOTE FORM MODAL ==================== */}
       <AnimatePresence>
         {isNoteModalOpen && selectedCourse && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-2xl rounded-2xl border p-6 my-8 shadow-2xl relative ${
+              className={`w-full max-w-2xl rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -2281,12 +2424,12 @@ export function EducationManager() {
       {/* ==================== CHAPTERS MANAGER MODAL ==================== */}
       <AnimatePresence>
         {isChaptersModalOpen && selectedCourse && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl relative ${
+              className={`w-full max-w-md rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -2382,12 +2525,12 @@ export function EducationManager() {
       {/* ==================== VIEW NOTE DETAILS MODAL ==================== */}
       <AnimatePresence>
         {isViewNoteModalOpen && activeViewNote && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-xl rounded-2xl border p-6 shadow-2xl relative ${
+              className={`w-full max-w-xl rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -2538,12 +2681,12 @@ export function EducationManager() {
       {/* ==================== ADD YEAR TAB MODAL ==================== */}
       <AnimatePresence>
         {isAddTabModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-md rounded-2xl border p-6 shadow-2xl relative ${
+              className={`w-full max-w-md rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -2644,12 +2787,12 @@ export function EducationManager() {
       {/* ==================== VIEW COURSE RESOURCES MODAL ==================== */}
       <AnimatePresence>
         {activeViewCourseResources && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[60] overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-lg rounded-2xl border p-6 shadow-2xl relative overflow-hidden ${
+              className={`w-full max-w-lg rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative overflow-hidden ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
@@ -2799,12 +2942,12 @@ export function EducationManager() {
       {/* Delete Tab Confirmation Modal */}
       <AnimatePresence>
         {tabToDeleteConfirm && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl relative ${
+              className={`w-full max-w-sm rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
                 theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >

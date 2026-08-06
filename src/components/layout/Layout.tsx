@@ -320,7 +320,7 @@ export function Layout({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto px-0 sm:px-6 lg:px-8 py-2 sm:py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-8 py-2 sm:py-8 w-full">
         {children}
       </main>
 
