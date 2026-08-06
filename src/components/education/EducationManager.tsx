@@ -842,7 +842,7 @@ export function EducationManager() {
   };
 
   return (
-    <div className={`p-[15px] sm:p-6 min-h-screen transition-colors duration-200 ${
+    <div className={`p-0 sm:p-6 min-h-screen transition-colors duration-200 ${
       theme === 'dark' ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
     }`} id="educational-workspace-container">
       
@@ -850,7 +850,7 @@ export function EducationManager() {
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
         
         {/* Welcome & Motivational Quote */}
-        <div className={`flex-1 p-[15px] sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
+        <div className={`flex-1 p-4 sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
@@ -916,7 +916,7 @@ export function EducationManager() {
         </div>
 
         {/* Elegant Pomodoro Focus Timer Widget */}
-        <div className={`w-full lg:w-80 p-[15px] sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
+        <div className={`w-full lg:w-80 p-4 sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
@@ -988,7 +988,7 @@ export function EducationManager() {
       </div>
 
       {/* Global Toolbar / Search */}
-      <div className={`p-[15px] sm:p-4 rounded-2xl border mb-6 flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch md:items-center justify-between transition-all max-w-full overflow-hidden ${
+      <div className={`p-4 sm:p-6 rounded-2xl border mb-6 flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch md:items-center justify-between transition-all max-w-full overflow-hidden ${
         theme === 'dark' ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200 shadow-sm'
       }`}>
         <div className="relative w-full md:w-72 shrink-0">
