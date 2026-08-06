@@ -1509,7 +1509,9 @@ export function EducationManager() {
 
                         {/* Title Row */}
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-bold text-sm sm:text-base leading-snug flex-1 text-slate-900 dark:text-slate-100">
+                          <h4 className={`font-extrabold text-sm sm:text-base leading-snug flex-1 ${
+                            theme === 'dark' ? 'text-slate-100' : 'text-slate-900'
+                          }`}>
                             {note.chatTitle}
                           </h4>
                           <button
@@ -2575,7 +2577,9 @@ export function EducationManager() {
                     {activeViewNote.questionCount || 1}টি প্রশ্ন
                   </span>
                 </div>
-                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{activeViewNote.chatTitle}</h2>
+                <h2 className={`text-xl font-extrabold tracking-tight ${
+                  theme === 'dark' ? 'text-slate-100' : 'text-slate-900'
+                }`}>{activeViewNote.chatTitle}</h2>
               </div>
 
               <div className="space-y-4">
