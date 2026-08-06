@@ -842,7 +842,7 @@ export function EducationManager() {
   };
 
   return (
-    <div className={`p-0 sm:p-6 min-h-screen transition-colors duration-200 ${
+    <div className={`p-[15px] sm:p-6 min-h-screen transition-colors duration-200 ${
       theme === 'dark' ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
     }`} id="educational-workspace-container">
       
@@ -850,7 +850,7 @@ export function EducationManager() {
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
         
         {/* Welcome & Motivational Quote */}
-        <div className={`flex-1 p-4 sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
+        <div className={`flex-1 p-[15px] sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
@@ -916,7 +916,7 @@ export function EducationManager() {
         </div>
 
         {/* Elegant Pomodoro Focus Timer Widget */}
-        <div className={`w-full lg:w-80 p-4 sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
+        <div className={`w-full lg:w-80 p-[15px] sm:p-6 rounded-2xl border flex flex-col justify-between transition-all ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
@@ -988,7 +988,7 @@ export function EducationManager() {
       </div>
 
       {/* Global Toolbar / Search */}
-      <div className={`p-4 rounded-xl border mb-6 flex flex-col md:flex-row gap-4 items-center justify-between transition-all ${
+      <div className={`p-[15px] sm:p-4 rounded-2xl border mb-6 flex flex-col md:flex-row gap-3 sm:gap-4 items-stretch md:items-center justify-between transition-all max-w-full overflow-hidden ${
         theme === 'dark' ? 'bg-[#111827] border-white/5' : 'bg-white border-slate-200 shadow-sm'
       }`}>
         <div className="relative w-full md:w-72 shrink-0">
@@ -1118,12 +1118,12 @@ export function EducationManager() {
           </div>
         )}
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto shrink-0">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full md:w-auto min-w-0">
           {/* Dynamic Filters shown only in detailed course page or global notes lookup */}
           {selectedCourse && (
-            <div className="grid grid-cols-2 gap-2 w-full md:w-auto">
-              <div className="flex items-center gap-1.5 bg-slate-500/5 p-1.5 rounded-xl border border-slate-200/50 dark:border-white/5">
-                <Filter size={13} className="text-indigo-400 shrink-0 ml-1" />
+            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full md:w-auto min-w-0">
+              <div className="flex items-center gap-1.5 bg-slate-500/5 dark:bg-white/5 p-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 flex-1 sm:flex-initial min-w-[130px]">
+                <Filter size={13} className="text-indigo-500 dark:text-indigo-400 shrink-0 ml-1" />
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
@@ -1138,8 +1138,8 @@ export function EducationManager() {
                 </select>
               </div>
 
-              <div className="flex items-center gap-1.5 bg-slate-500/5 p-1.5 rounded-xl border border-slate-200/50 dark:border-white/5">
-                <Sparkles size={13} className="text-indigo-400 shrink-0 ml-1" />
+              <div className="flex items-center gap-1.5 bg-slate-500/5 dark:bg-white/5 p-1.5 rounded-xl border border-slate-200/80 dark:border-white/10 flex-1 sm:flex-initial min-w-[130px]">
+                <Sparkles size={13} className="text-indigo-500 dark:text-indigo-400 shrink-0 ml-1" />
                 <select
                   value={filterProvider}
                   onChange={(e) => setFilterProvider(e.target.value)}
@@ -1471,10 +1471,10 @@ export function EducationManager() {
                     return (
                       <div 
                         key={note.id}
-                        className={`p-3.5 rounded-xl border space-y-3 transition-all ${
+                        className={`p-3.5 rounded-2xl border space-y-3 transition-all ${
                           theme === 'dark'
                             ? 'bg-black/20 border-white/5 text-slate-200'
-                            : 'bg-slate-50/70 border-slate-200 text-slate-800'
+                            : 'bg-white border-slate-200/90 text-slate-800 shadow-sm hover:shadow-md hover:border-indigo-200'
                         }`}
                       >
                         {/* Top Row: Serial # + AI Provider + Question Count */}
@@ -1483,16 +1483,16 @@ export function EducationManager() {
                             <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-mono font-extrabold border ${
                               theme === 'dark'
                                 ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
-                                : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                                : 'bg-indigo-50 text-indigo-700 border-indigo-200 font-bold'
                             }`}>
                               #{serialFormatted}
                             </span>
                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              note.aiProvider === 'ChatGPT' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                              note.aiProvider === 'Gemini' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                              note.aiProvider === 'Google AI Studio' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20' :
-                              note.aiProvider === 'Claude' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
-                              'bg-purple-500/10 text-purple-400 border-purple-500/20'
+                              note.aiProvider === 'ChatGPT' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+                              note.aiProvider === 'Gemini' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' :
+                              note.aiProvider === 'Google AI Studio' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20' :
+                              note.aiProvider === 'Claude' ? 'bg-amber-500/10 text-amber-700 dark:text-orange-400 border-amber-500/20' :
+                              'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
                             }`}>
                               {note.aiProvider}
                             </span>
@@ -1501,7 +1501,7 @@ export function EducationManager() {
                           <span className={`text-[11px] font-mono font-extrabold px-2 py-0.5 rounded border ${
                             theme === 'dark'
                               ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
-                              : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                              : 'bg-indigo-50 text-indigo-700 border-indigo-200 font-bold'
                           }`}>
                             ({note.questionCount || 1}টি প্রশ্ন)
                           </span>
@@ -1509,12 +1509,12 @@ export function EducationManager() {
 
                         {/* Title Row */}
                         <div className="flex items-start justify-between gap-2">
-                          <h4 className="font-bold text-sm leading-snug flex-1 text-slate-900 dark:text-slate-100">
+                          <h4 className="font-bold text-sm sm:text-base leading-snug flex-1 text-slate-900 dark:text-slate-100">
                             {note.chatTitle}
                           </h4>
                           <button
                             onClick={() => handleCopyChatTitle(note.chatTitle, note.id)}
-                            className="p-1.5 hover:bg-slate-500/10 rounded text-slate-400 hover:text-indigo-400 shrink-0"
+                            className="p-1.5 hover:bg-slate-500/10 rounded text-slate-400 hover:text-indigo-500 shrink-0"
                             title="Copy Chat Title"
                           >
                             {copiedId === note.id ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
@@ -1524,12 +1524,12 @@ export function EducationManager() {
                         {/* Chapter & Categories */}
                         <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
                           <span className={`px-2 py-0.5 rounded font-bold ${
-                            theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-200 text-slate-700'
+                            theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200/80'
                           }`}>
                             {note.chapter}
                           </span>
                           {note.categories.map((cat, i) => (
-                            <span key={i} className="px-1.5 py-0.5 rounded uppercase font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
+                            <span key={i} className="px-1.5 py-0.5 rounded uppercase font-extrabold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
                               {cat}
                             </span>
                           ))}
@@ -1537,14 +1537,18 @@ export function EducationManager() {
 
                         {/* Gmail */}
                         {note.gmail && (
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                            <Mail size={12} className="shrink-0" />
+                          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono font-medium">
+                            <Mail size={12} className="shrink-0 text-slate-400" />
                             <span className="truncate">{note.gmail}</span>
                           </div>
                         )}
 
                         {/* Question snippet */}
-                        <p className="text-xs text-slate-400 dark:text-slate-300 line-clamp-2 bg-black/5 dark:bg-black/20 p-2 rounded-lg border border-slate-200/50 dark:border-white/5">
+                        <p className={`text-xs line-clamp-2 p-2.5 rounded-xl border transition-colors ${
+                          theme === 'dark' 
+                            ? 'bg-black/20 text-slate-300 border-white/5' 
+                            : 'bg-slate-50 text-slate-800 border-slate-200/80 font-medium'
+                        }`}>
                           {note.question}
                         </p>
 
@@ -2550,16 +2554,16 @@ export function EducationManager() {
               <div className="mb-4">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                    activeViewNote.aiProvider === 'ChatGPT' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                    activeViewNote.aiProvider === 'Gemini' ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' :
-                    activeViewNote.aiProvider === 'Google AI Studio' ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' :
-                    activeViewNote.aiProvider === 'Claude' ? 'bg-orange-500/10 text-orange-400 border border-orange-500/20' :
-                    'bg-purple-500/10 text-purple-400 border border-purple-500/20'
+                    activeViewNote.aiProvider === 'ChatGPT' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
+                    activeViewNote.aiProvider === 'Gemini' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
+                    activeViewNote.aiProvider === 'Google AI Studio' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20' :
+                    activeViewNote.aiProvider === 'Claude' ? 'bg-amber-500/10 text-amber-700 dark:text-orange-400 border border-amber-500/20' :
+                    'bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20'
                   }`}>
                     {activeViewNote.aiProvider}
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${
-                    theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'
+                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                    theme === 'dark' ? 'bg-white/5 text-slate-300 border-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'
                   }`}>
                     {activeViewNote.chapter}
                   </span>
@@ -2571,7 +2575,7 @@ export function EducationManager() {
                     {activeViewNote.questionCount || 1}টি প্রশ্ন
                   </span>
                 </div>
-                <h2 className="text-xl font-bold tracking-tight">{activeViewNote.chatTitle}</h2>
+                <h2 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">{activeViewNote.chatTitle}</h2>
               </div>
 
               <div className="space-y-4">
@@ -2583,7 +2587,7 @@ export function EducationManager() {
                     {activeViewNote.categories.map((cat, i) => (
                       <span 
                         key={i} 
-                        className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                        className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20"
                       >
                         {cat}
                       </span>
@@ -2592,11 +2596,13 @@ export function EducationManager() {
                 </div>
 
                 {/* Gmail details */}
-                <div className="flex items-center gap-2 p-2.5 rounded-xl border dark:border-white/5 bg-black/5 dark:bg-black/10">
-                  <Mail size={16} className="text-slate-400" />
+                <div className={`flex items-center gap-2 p-3 rounded-xl border ${
+                  theme === 'dark' ? 'bg-black/20 border-white/5 text-slate-200' : 'bg-indigo-50/60 border-indigo-100 text-slate-900'
+                }`}>
+                  <Mail size={16} className="text-indigo-500 dark:text-slate-400 shrink-0" />
                   <div>
-                    <span className="text-[9px] text-slate-400 block font-bold uppercase">Associated Gmail</span>
-                    <span className="text-xs font-semibold">{activeViewNote.gmail}</span>
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 block font-bold uppercase">Associated Gmail</span>
+                    <span className="text-xs font-mono font-semibold">{activeViewNote.gmail}</span>
                   </div>
                 </div>
 
@@ -2604,7 +2610,7 @@ export function EducationManager() {
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Question Topic & Solutions</span>
                   <div className={`p-4 rounded-xl border text-sm overflow-y-auto max-h-60 whitespace-pre-wrap leading-relaxed ${
-                    theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'
+                    theme === 'dark' ? 'bg-black/30 border-white/5 text-slate-200' : 'bg-slate-50 border-slate-200/90 text-slate-800 font-medium'
                   }`}>
                     {activeViewNote.question}
                   </div>
