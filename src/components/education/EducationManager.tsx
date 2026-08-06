@@ -842,9 +842,7 @@ export function EducationManager() {
   };
 
   return (
-    <div className={`p-0 sm:p-6 min-h-screen transition-colors duration-200 ${
-      theme === 'dark' ? 'bg-[#0b0f19] text-slate-100' : 'bg-[#f8fafc] text-slate-800'
-    }`} id="educational-workspace-container">
+    <div className="w-full space-y-6" id="educational-workspace-container">
       
       {/* Header with Motivation Section */}
       <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 mb-6 sm:mb-8">
