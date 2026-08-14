@@ -531,218 +531,222 @@ export function PasswordManager() {
   });
 
   return (
-    <div className={`w-full min-h-[70vh] rounded-3xl p-4 sm:p-8 flex flex-col justify-center items-center ${
+    <div className={`w-full min-h-[70vh] rounded-2xl sm:rounded-3xl p-3 sm:p-6 lg:p-8 transition-all ${
       theme === 'dark' ? 'bg-[#0f172a] text-slate-200' : 'bg-white text-slate-800'
     }`}>
       
       {/* 1. SETUP LOCK CONFIG (If user hasn't set up lock pin or password yet) */}
       {hasLockConfig === false && (
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className={`max-w-md w-full rounded-2xl p-6 border shadow-xl flex flex-col gap-6 text-center ${
-            theme === 'dark' ? 'bg-slate-900 border-white/5 shadow-black/40' : 'bg-slate-50 border-slate-200'
-          }`}
-        >
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-red-500 to-rose-600 flex items-center justify-center text-white shadow-lg">
-            <Lock size={28} />
-          </div>
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">Configure Secure Lock</h2>
-            <p className="text-sm text-slate-500 mt-2">
-              Setup a lock method to safeguard your secure accounts and passwords. Every time you open this section, you'll be asked for this PIN/Password.
-            </p>
-          </div>
-
-          {setupStep === 'choose' && (
-            <div className="flex flex-col gap-3 mt-2">
-              <button 
-                onClick={() => { setSetupLockType('pin'); setSetupStep('input'); }}
-                className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
-              >
-                <Key size={18} /> Setup 4-Digit Security PIN
-              </button>
-              <button 
-                onClick={() => { setSetupLockType('password'); setSetupStep('input'); }}
-                className={`w-full font-semibold py-3.5 rounded-xl transition-all border flex items-center justify-center gap-2 ${
-                  theme === 'dark' ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-100'
-                }`}
-              >
-                <KeyRound size={18} /> Setup Alphanumeric Password
-              </button>
-            </div>
-          )}
-
-          {setupStep === 'input' && (
-            <div className="flex flex-col gap-4 text-left">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Step 1: Create your lock {setupLockType === 'pin' ? 'PIN' : 'Password'}
-              </p>
-              <input 
-                type={setupLockType === 'pin' ? 'number' : 'password'}
-                maxLength={setupLockType === 'pin' ? 4 : 32}
-                placeholder={setupLockType === 'pin' ? 'e.g. 1234' : 'Password (min 6 chars)'}
-                value={setupInput}
-                onChange={(e) => setSetupInput(e.target.value)}
-                className={`w-full border rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-1 transition-all ${
-                  theme === 'dark' ? 'bg-black/50 border-white/10 text-white focus:border-red-500 focus:ring-red-500' : 'bg-white border-slate-300 text-slate-900 focus:border-red-500 focus:ring-red-500'
-                }`}
-              />
-              <button 
-                disabled={setupLockType === 'pin' ? setupInput.length !== 4 : setupInput.length < 6}
-                onClick={() => setSetupStep('confirm')}
-                className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-3 rounded-xl transition-all shadow-md disabled:opacity-50"
-              >
-                Continue
-              </button>
-              <button 
-                onClick={() => { setSetupStep('choose'); setSetupInput(''); }}
-                className="text-slate-400 hover:text-white transition-colors text-xs text-center mt-1 font-medium"
-              >
-                Go Back
-              </button>
-            </div>
-          )}
-
-          {setupStep === 'confirm' && (
-            <form onSubmit={handleSetupLock} className="flex flex-col gap-4 text-left">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Step 2: Confirm your lock {setupLockType === 'pin' ? 'PIN' : 'Password'}
-              </p>
-              <input 
-                type={setupLockType === 'pin' ? 'number' : 'password'}
-                maxLength={setupLockType === 'pin' ? 4 : 32}
-                placeholder={setupLockType === 'pin' ? 'Re-enter PIN' : 'Re-enter Password'}
-                value={setupConfirmInput}
-                onChange={(e) => setSetupConfirmInput(e.target.value)}
-                className={`w-full border rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-1 transition-all ${
-                  theme === 'dark' ? 'bg-black/50 border-white/10 text-white focus:border-red-500 focus:ring-red-500' : 'bg-white border-slate-300 text-slate-900 focus:border-red-500 focus:ring-red-500'
-                }`}
-              />
-              <button 
-                type="submit"
-                disabled={setupConfirmInput !== setupInput}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-all shadow-md disabled:opacity-50"
-              >
-                Confirm & Create Lock
-              </button>
-              <button 
-                type="button"
-                onClick={() => { setSetupStep('input'); setSetupConfirmInput(''); }}
-                className="text-slate-400 hover:text-white transition-colors text-xs text-center mt-1 font-medium"
-              >
-                Back to edit
-              </button>
-            </form>
-          )}
-        </motion.div>
-      )}
-
-      {/* 2. LOCKED SCREEN (If lock config exists, prompt for PIN/Password entry) */}
-      {hasLockConfig === true && isLocked && (
-        <motion.div 
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-md w-full flex flex-col items-center justify-center p-6 text-center"
-        >
+        <div className="min-h-[60vh] flex flex-col justify-center items-center w-full my-auto">
           <motion.div 
-            animate={isWrongUnlock ? { x: [-10, 10, -10, 10, 0] } : {}}
-            transition={{ duration: 0.4 }}
-            className="w-20 h-20 rounded-[2rem] bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white shadow-xl mb-6 shadow-red-500/10"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`max-w-md w-full rounded-2xl p-5 sm:p-6 border shadow-xl flex flex-col gap-6 text-center ${
+              theme === 'dark' ? 'bg-slate-900 border-white/5 shadow-black/40' : 'bg-slate-50 border-slate-200'
+            }`}
           >
-            <Lock size={32} />
-          </motion.div>
-
-          <h2 className="text-2xl font-bold tracking-tight mb-2">Vault Locked</h2>
-          <p className="text-sm text-slate-400 max-w-xs mb-8">
-            Enter your secure {lockType === 'pin' ? 'PIN' : 'Password'} to decrypt and access your credentials database.
-          </p>
-
-          {/* Unlock Controls */}
-          {lockType === 'pin' ? (
-            <div className="w-full max-w-xs flex flex-col items-center gap-6">
-              {/* PIN Bubbles Display */}
-              <div className="flex gap-4 justify-center my-2">
-                {[...Array(4)].map((_, i) => (
-                  <div 
-                    key={i}
-                    className={`w-4 h-4 rounded-full border transition-all duration-300 ${
-                      unlockInput.length > i 
-                        ? 'bg-red-500 border-red-500 scale-110 shadow-[0_0_10px_rgba(239,68,68,0.5)]' 
-                        : theme === 'dark' ? 'border-white/20 bg-transparent' : 'border-slate-300 bg-transparent'
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {/* Numeric Pad Grid */}
-              <div className="grid grid-cols-3 gap-4 w-full px-2">
-                {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
-                  <button
-                    key={num}
-                    onClick={() => handleKeypadClick(num)}
-                    className={`h-14 rounded-2xl flex items-center justify-center font-bold text-xl active:scale-95 transition-all ${
-                      theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border border-white/5 text-white' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-800'
-                    }`}
-                  >
-                    {num}
-                  </button>
-                ))}
-                
-                {/* Backspace Button */}
-                <button
-                  onClick={() => setUnlockInput(prev => prev.slice(0, -1))}
-                  className={`h-14 rounded-2xl flex items-center justify-center font-bold active:scale-95 transition-all ${
-                    theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-400' : 'bg-slate-50 hover:bg-slate-100 text-slate-500'
-                  }`}
-                >
-                  Clear
-                </button>
-                
-                {/* Zero Button */}
-                <button
-                  onClick={() => handleKeypadClick('0')}
-                  className={`h-14 rounded-2xl flex items-center justify-center font-bold text-xl active:scale-95 transition-all ${
-                    theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border border-white/5 text-white' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-800'
-                  }`}
-                >
-                  0
-                </button>
-
-                {/* Back / Clear PIN display button */}
-                <button
-                  onClick={() => setUnlockInput('')}
-                  className={`h-14 rounded-2xl flex items-center justify-center text-xs uppercase font-bold tracking-widest text-slate-400 hover:text-white active:scale-95 transition-colors`}
-                >
-                  Reset
-                </button>
-              </div>
+            <div className="mx-auto w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-red-500 to-rose-600 flex items-center justify-center text-white shadow-lg">
+              <Lock size={26} />
             </div>
-          ) : (
-            <form 
-              onSubmit={(e) => { e.preventDefault(); handleUnlock(); }}
-              className="w-full max-w-sm flex flex-col gap-4"
-            >
-              <div className="relative">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Configure Secure Lock</h2>
+              <p className="text-xs sm:text-sm text-slate-500 mt-2">
+                Setup a lock method to safeguard your secure accounts and passwords. Every time you open this section, you'll be asked for this PIN/Password.
+              </p>
+            </div>
+
+            {setupStep === 'choose' && (
+              <div className="flex flex-col gap-3 mt-2">
+                <button 
+                  onClick={() => { setSetupLockType('pin'); setSetupStep('input'); }}
+                  className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-3 sm:py-3.5 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 text-xs sm:text-sm"
+                >
+                  <Key size={18} /> Setup 4-Digit Security PIN
+                </button>
+                <button 
+                  onClick={() => { setSetupLockType('password'); setSetupStep('input'); }}
+                  className={`w-full font-semibold py-3 sm:py-3.5 rounded-xl transition-all border flex items-center justify-center gap-2 text-xs sm:text-sm ${
+                    theme === 'dark' ? 'bg-white/5 border-white/10 text-white hover:bg-white/10' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-100'
+                  }`}
+                >
+                  <KeyRound size={18} /> Setup Alphanumeric Password
+                </button>
+              </div>
+            )}
+
+            {setupStep === 'input' && (
+              <div className="flex flex-col gap-4 text-left">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Step 1: Create your lock {setupLockType === 'pin' ? 'PIN' : 'Password'}
+                </p>
                 <input 
-                  type="password"
-                  placeholder="Password"
-                  value={unlockInput}
-                  onChange={(e) => setUnlockInput(e.target.value)}
-                  className={`w-full border rounded-xl px-4 py-3.5 pr-12 focus:outline-none focus:ring-1 transition-all ${
+                  type={setupLockType === 'pin' ? 'number' : 'password'}
+                  maxLength={setupLockType === 'pin' ? 4 : 32}
+                  placeholder={setupLockType === 'pin' ? 'e.g. 1234' : 'Password (min 6 chars)'}
+                  value={setupInput}
+                  onChange={(e) => setSetupInput(e.target.value)}
+                  className={`w-full border rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-1 transition-all ${
+                    theme === 'dark' ? 'bg-black/50 border-white/10 text-white focus:border-red-500 focus:ring-red-500' : 'bg-white border-slate-300 text-slate-900 focus:border-red-500 focus:ring-red-500'
+                  }`}
+                />
+                <button 
+                  disabled={setupLockType === 'pin' ? setupInput.length !== 4 : setupInput.length < 6}
+                  onClick={() => setSetupStep('confirm')}
+                  className="w-full bg-red-600 hover:bg-red-500 text-white font-semibold py-3 rounded-xl transition-all shadow-md disabled:opacity-50 text-xs sm:text-sm"
+                >
+                  Continue
+                </button>
+                <button 
+                  onClick={() => { setSetupStep('choose'); setSetupInput(''); }}
+                  className="text-slate-400 hover:text-white transition-colors text-xs text-center mt-1 font-medium"
+                >
+                  Go Back
+                </button>
+              </div>
+            )}
+
+            {setupStep === 'confirm' && (
+              <form onSubmit={handleSetupLock} className="flex flex-col gap-4 text-left">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                  Step 2: Confirm your lock {setupLockType === 'pin' ? 'PIN' : 'Password'}
+                </p>
+                <input 
+                  type={setupLockType === 'pin' ? 'number' : 'password'}
+                  maxLength={setupLockType === 'pin' ? 4 : 32}
+                  placeholder={setupLockType === 'pin' ? 'Re-enter PIN' : 'Re-enter Password'}
+                  value={setupConfirmInput}
+                  onChange={(e) => setSetupConfirmInput(e.target.value)}
+                  className={`w-full border rounded-xl px-4 py-3 text-center text-lg tracking-widest font-bold focus:outline-none focus:ring-1 transition-all ${
                     theme === 'dark' ? 'bg-black/50 border-white/10 text-white focus:border-red-500 focus:ring-red-500' : 'bg-white border-slate-300 text-slate-900 focus:border-red-500 focus:ring-red-500'
                   }`}
                 />
                 <button 
                   type="submit"
-                  className="absolute right-3.5 top-3 text-red-500 hover:text-red-400"
+                  disabled={setupConfirmInput !== setupInput}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold py-3 rounded-xl transition-all shadow-md disabled:opacity-50 text-xs sm:text-sm"
                 >
-                  <ArrowRight size={22} />
+                  Confirm & Create Lock
                 </button>
+                <button 
+                  type="button"
+                  onClick={() => { setSetupStep('input'); setSetupConfirmInput(''); }}
+                  className="text-slate-400 hover:text-white transition-colors text-xs text-center mt-1 font-medium"
+                >
+                  Back to edit
+                </button>
+              </form>
+            )}
+          </motion.div>
+        </div>
+      )}
+
+      {/* 2. LOCKED SCREEN (If lock config exists, prompt for PIN/Password entry) */}
+      {hasLockConfig === true && isLocked && (
+        <div className="min-h-[60vh] flex flex-col justify-center items-center w-full my-auto">
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-md w-full flex flex-col items-center justify-center p-4 sm:p-6 text-center"
+          >
+            <motion.div 
+              animate={isWrongUnlock ? { x: [-10, 10, -10, 10, 0] } : {}}
+              transition={{ duration: 0.4 }}
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl sm:rounded-[2rem] bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center text-white shadow-xl mb-4 sm:mb-6 shadow-red-500/10"
+            >
+              <Lock size={28} className="sm:w-8 sm:h-8" />
+            </motion.div>
+
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight mb-2">Vault Locked</h2>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-xs mb-6 sm:mb-8">
+              Enter your secure {lockType === 'pin' ? 'PIN' : 'Password'} to decrypt and access your credentials database.
+            </p>
+
+            {/* Unlock Controls */}
+            {lockType === 'pin' ? (
+              <div className="w-full max-w-xs flex flex-col items-center gap-5 sm:gap-6">
+                {/* PIN Bubbles Display */}
+                <div className="flex gap-3 sm:gap-4 justify-center my-1 sm:my-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div 
+                      key={i}
+                      className={`w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full border transition-all duration-300 ${
+                        unlockInput.length > i 
+                          ? 'bg-red-500 border-red-500 scale-110 shadow-[0_0_10px_rgba(239,68,68,0.5)]' 
+                          : theme === 'dark' ? 'border-white/20 bg-transparent' : 'border-slate-300 bg-transparent'
+                      }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Numeric Pad Grid */}
+                <div className="grid grid-cols-3 gap-2.5 sm:gap-4 w-full px-1 sm:px-2">
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
+                    <button
+                      key={num}
+                      onClick={() => handleKeypadClick(num)}
+                      className={`h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl active:scale-95 transition-all ${
+                        theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border border-white/5 text-white' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-800'
+                      }`}
+                    >
+                      {num}
+                    </button>
+                  ))}
+                  
+                  {/* Backspace Button */}
+                  <button
+                    onClick={() => setUnlockInput(prev => prev.slice(0, -1))}
+                    className={`h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-xs sm:text-sm active:scale-95 transition-all ${
+                      theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-400' : 'bg-slate-50 hover:bg-slate-100 text-slate-500'
+                    }`}
+                  >
+                    Clear
+                  </button>
+                  
+                  {/* Zero Button */}
+                  <button
+                    onClick={() => handleKeypadClick('0')}
+                    className={`h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center font-bold text-lg sm:text-xl active:scale-95 transition-all ${
+                      theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border border-white/5 text-white' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-800'
+                    }`}
+                  >
+                    0
+                  </button>
+
+                  {/* Reset PIN display button */}
+                  <button
+                    onClick={() => setUnlockInput('')}
+                    className="h-12 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center text-[11px] sm:text-xs uppercase font-bold tracking-wider text-slate-400 hover:text-white active:scale-95 transition-colors"
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
-            </form>
-          )}
-        </motion.div>
+            ) : (
+              <form 
+                onSubmit={(e) => { e.preventDefault(); handleUnlock(); }}
+                className="w-full max-w-sm flex flex-col gap-4"
+              >
+                <div className="relative">
+                  <input 
+                    type="password"
+                    placeholder="Password"
+                    value={unlockInput}
+                    onChange={(e) => setUnlockInput(e.target.value)}
+                    className={`w-full border rounded-xl px-4 py-3 sm:py-3.5 pr-12 focus:outline-none focus:ring-1 text-sm transition-all ${
+                      theme === 'dark' ? 'bg-black/50 border-white/10 text-white focus:border-red-500 focus:ring-red-500' : 'bg-white border-slate-300 text-slate-900 focus:border-red-500 focus:ring-red-500'
+                    }`}
+                  />
+                  <button 
+                    type="submit"
+                    className="absolute right-3.5 top-2.5 sm:top-3 text-red-500 hover:text-red-400 p-1"
+                  >
+                    <ArrowRight size={20} />
+                  </button>
+                </div>
+              </form>
+            )}
+          </motion.div>
+        </div>
       )}
 
       {/* 3. UNLOCKED MAIN SECURE BOARD */}
@@ -750,63 +754,63 @@ export function PasswordManager() {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="w-full flex flex-col gap-6"
+          className="w-full flex flex-col gap-5 sm:gap-6"
         >
           {/* Top Panel / Controls */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-white/5 pb-4 sm:pb-6">
             <div>
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-lg">
+              <div className="flex items-center gap-2.5 sm:gap-3">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 to-green-600 flex items-center justify-center text-white shadow-lg shrink-0">
                   <ShieldCheck size={18} />
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight">Personal Passwords Manager</h1>
+                <h1 className="text-lg sm:text-2xl font-bold tracking-tight">Personal Passwords Manager</h1>
               </div>
-              <p className="text-xs text-emerald-500 mt-1 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> High-Grade End-to-End AES-256 Encryption Active
+              <p className="text-[11px] sm:text-xs text-emerald-500 mt-1 flex items-center gap-1.5 flex-wrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" /> High-Grade End-to-End AES-256 Encryption Active
               </p>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => { setSetupStep('choose'); setSetupInput(''); setSetupConfirmInput(''); setIsChangeLockOpen(true); }}
-                className={`px-4 py-2.5 rounded-full text-xs font-semibold border flex items-center gap-1.5 transition-all ${
+                className={`flex-1 sm:flex-initial justify-center px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-xs font-semibold border flex items-center gap-1.5 transition-all ${
                   theme === 'dark' ? 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                <KeyRound size={14} /> Change Lock Config
+                <KeyRound size={14} className="shrink-0" /> <span className="truncate">Change Lock</span>
               </button>
               <button
                 onClick={() => { setIsLocked(true); setMasterKey(''); setDecryptedPasswords({}); }}
-                className="bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-full text-xs font-bold tracking-wider uppercase flex items-center gap-1.5 transition-all"
+                className="flex-1 sm:flex-initial justify-center bg-red-600 hover:bg-red-500 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs font-bold tracking-wider uppercase flex items-center gap-1.5 transition-all shrink-0"
               >
-                <Lock size={14} /> Lock Vault
+                <Lock size={14} className="shrink-0" /> Lock Vault
               </button>
             </div>
           </div>
 
           {/* Search, Filter & Add Row */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
-            <div className="flex flex-col sm:flex-row items-stretch gap-3 flex-1">
+          <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex flex-col sm:flex-row items-stretch gap-2.5 sm:gap-3 flex-1">
               {/* Search */}
               <div className="relative flex-1">
-                <Search size={16} className="absolute left-3.5 top-3.5 text-slate-400" />
+                <Search size={16} className="absolute left-3.5 top-3 text-slate-400" />
                 <input 
                   type="text"
                   placeholder="Search by app, email or site URL..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full border rounded-xl pl-10 pr-4 py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-1 transition-all ${
+                  className={`w-full border rounded-xl pl-10 pr-4 py-2 sm:py-2.5 text-xs sm:text-sm focus:outline-none focus:ring-1 transition-all ${
                     theme === 'dark' ? 'bg-white/[0.02] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                   }`}
                 />
               </div>
 
               {/* Category selector */}
-              <div className="relative">
+              <div className="relative sm:w-48">
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
-                  className={`w-full border rounded-xl px-4 py-2.5 text-xs sm:text-sm appearance-none pr-8 focus:outline-none transition-all ${
+                  className={`w-full border rounded-xl px-4 py-2 sm:py-2.5 text-xs sm:text-sm appearance-none pr-8 focus:outline-none transition-all ${
                     theme === 'dark' ? 'bg-white/[0.02] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-800'
                   }`}
                 >
@@ -814,34 +818,33 @@ export function PasswordManager() {
                     <option key={cat} value={cat} className={theme === 'dark' ? 'bg-[#1e293b] text-white' : 'bg-white text-slate-800'}>{cat}</option>
                   ))}
                 </select>
-                <Filter size={14} className="absolute right-3.5 top-3.5 text-slate-400 pointer-events-none" />
+                <Filter size={14} className="absolute right-3.5 top-3 text-slate-400 pointer-events-none" />
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:flex items-center gap-2 sm:gap-2.5">
               <button
                 onClick={() => {
                   const nextVal = !showMainGenerator;
                   setShowMainGenerator(nextVal);
                   if (nextVal && !generatedPasswordResult) {
-                    // Generate one immediately
                     setTimeout(generatePassword, 50);
                   }
                 }}
-                className={`px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md text-sm ${
+                className={`w-full sm:w-auto px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md text-xs sm:text-sm ${
                   showMainGenerator 
                     ? 'bg-amber-600 hover:bg-amber-500 text-white' 
                     : theme === 'dark' ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-800'
                 }`}
               >
-                <Sparkles size={16} /> Password Generator
+                <Sparkles size={16} className="shrink-0" /> <span>Password Generator</span>
               </button>
 
               <button
                 onClick={handleOpenAdd}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md text-sm shrink-0"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md text-xs sm:text-sm shrink-0"
               >
-                <Plus size={18} /> Add New Credentials
+                <Plus size={18} className="shrink-0" /> <span>Add New Credentials</span>
               </button>
             </div>
           </div>
@@ -851,30 +854,30 @@ export function PasswordManager() {
             {showMainGenerator && (
               <motion.div
                 initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginBottom: 24 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 20 }}
                 exit={{ opacity: 0, height: 0, marginBottom: 0 }}
                 transition={{ duration: 0.2 }}
                 className="overflow-hidden"
               >
-                <div className={`p-6 rounded-2xl border ${
+                <div className={`p-4 sm:p-6 rounded-2xl border ${
                   theme === 'dark' 
                     ? 'bg-slate-900/80 border-white/10 shadow-lg shadow-black/30' 
                     : 'bg-slate-50 border-slate-200 shadow-sm'
                 }`}>
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5 sm:gap-6">
                     {/* Left: Interactive Controls */}
                     <div className="flex-1 space-y-4">
                       <div className="flex items-center gap-2 mb-1">
-                        <Sparkles size={18} className="text-amber-500 animate-pulse" />
-                        <h3 className="font-bold text-base">Secure Password Generator (পাসওয়ার্ড জেনারেটর)</h3>
+                        <Sparkles size={18} className="text-amber-500 animate-pulse shrink-0" />
+                        <h3 className="font-bold text-sm sm:text-base">Secure Password Generator (পাসওয়ার্ড জেনারেটর)</h3>
                       </div>
                       <p className="text-xs text-slate-400">
                         এখানে আপনার পছন্দের দৈর্ঘ্য ও অপশন বেছে নিয়ে একটি নিরাপদ পাসওয়ার্ড তৈরি করতে পারেন। সেটি কপি করে আপনার একাউন্টে বসাতে পারবেন। (Generate a secure password here, copy it and paste it to your accounts).
                       </p>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-center justify-between gap-4 text-xs">
-                          <span className="font-medium">Length: <span className="text-amber-500 font-bold">{genLength}</span> chars</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex items-center justify-between gap-3 text-xs">
+                          <span className="font-medium shrink-0">Length: <span className="text-amber-500 font-bold">{genLength}</span> chars</span>
                           <input 
                             type="range" 
                             min={8} 
@@ -888,7 +891,7 @@ export function PasswordManager() {
                           />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-400">
+                        <div className="grid grid-cols-2 gap-2 text-[11px] sm:text-xs font-semibold text-slate-400">
                           <label className="flex items-center gap-2 cursor-pointer select-none">
                             <input type="checkbox" checked={genUpper} onChange={(e) => setGenUpper(e.target.checked)} className="rounded text-amber-500 bg-transparent border-white/20 focus:ring-amber-500" />
                             Uppercase (A-Z)
@@ -911,14 +914,14 @@ export function PasswordManager() {
                       <button
                         type="button"
                         onClick={generatePassword}
-                        className="bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10"
+                        className="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold px-4 py-2.5 rounded-lg text-xs transition-all flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10"
                       >
                         <RefreshCw size={13} /> Generate New Secure Password
                       </button>
                     </div>
 
                     {/* Right: Output Screen & Copy Button */}
-                    <div className={`md:w-80 p-5 rounded-xl border flex flex-col justify-between gap-4 ${
+                    <div className={`w-full lg:w-80 p-4 sm:p-5 rounded-xl border flex flex-col justify-between gap-3 sm:gap-4 shrink-0 ${
                       theme === 'dark' ? 'bg-black/40 border-white/5' : 'bg-white border-slate-200'
                     }`}>
                       <div className="space-y-1">
@@ -929,7 +932,7 @@ export function PasswordManager() {
                             readOnly 
                             value={generatedPasswordResult}
                             placeholder="Click Generate"
-                            className={`w-full font-mono text-center text-sm md:text-base font-bold select-all pr-10 py-3 rounded-lg border focus:outline-none ${
+                            className={`w-full font-mono text-center text-xs sm:text-sm font-bold select-all pr-10 py-2.5 sm:py-3 rounded-lg border focus:outline-none ${
                               theme === 'dark' ? 'bg-black/60 border-white/10 text-amber-400' : 'bg-slate-50 border-slate-200 text-amber-600'
                             }`}
                           />
@@ -941,7 +944,7 @@ export function PasswordManager() {
                                 toast.success("পাসওয়ার্ড কপি করা হয়েছে! (Password copied to clipboard!)");
                               }
                             }}
-                            className="absolute right-3 top-3 text-slate-400 hover:text-white transition-colors"
+                            className="absolute right-3 top-2.5 sm:top-3 text-slate-400 hover:text-white transition-colors"
                             title="Copy Password"
                           >
                             <Copy size={16} />
@@ -972,21 +975,21 @@ export function PasswordManager() {
 
           {/* Credentials Cards List */}
           {filteredEntries.length === 0 ? (
-            <div className={`text-center py-16 rounded-3xl border ${
+            <div className={`text-center py-12 sm:py-16 rounded-3xl border ${
               theme === 'dark' ? 'bg-white/[0.01] border-white/5' : 'bg-slate-50 border-slate-100'
             }`}>
               <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 bg-slate-100 dark:bg-slate-800 text-slate-400">
                 <Search size={20} />
               </div>
-              <h3 className="font-bold text-lg">No passwords found</h3>
-              <p className="text-sm text-slate-500 mt-1">
+              <h3 className="font-bold text-base sm:text-lg">No passwords found</h3>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1 max-w-xs mx-auto">
                 {searchQuery || selectedCategory !== 'All' 
                   ? 'Try modifying your search query or filters.' 
                   : 'Start securing your credentials! Click "Add New Credentials" above.'}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
               {filteredEntries.map((entry) => {
                 const decValue = decryptedPasswords[entry.id] || '';
                 const strength = getPasswordStrength(decValue);
@@ -996,7 +999,7 @@ export function PasswordManager() {
                   <motion.div
                     key={entry.id}
                     layoutId={`entry-card-${entry.id}`}
-                    className={`group relative rounded-2xl border p-5 flex flex-col justify-between hover:scale-[1.01] transition-all duration-300 ${
+                    className={`group relative rounded-2xl border p-4 sm:p-5 flex flex-col justify-between hover:scale-[1.01] transition-all duration-300 ${
                       theme === 'dark' 
                         ? 'bg-gradient-to-br from-slate-900 to-slate-900/60 border-white/5 hover:border-white/10 shadow-lg' 
                         : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-md'
@@ -1004,21 +1007,21 @@ export function PasswordManager() {
                   >
                     <div>
                       {/* Title & Category Badge */}
-                      <div className="flex items-start justify-between gap-2 mb-4">
-                        <div>
-                          <h3 className="font-bold text-lg text-red-500 tracking-tight">{entry.title}</h3>
+                      <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-bold text-base sm:text-lg text-red-500 tracking-tight truncate">{entry.title}</h3>
                           {entry.url && (
                             <a 
                               href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`}
                               target="_blank" 
                               rel="noreferrer" 
-                              className="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 transition-colors mt-0.5"
+                              className="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 transition-colors mt-0.5 truncate max-w-full"
                             >
-                              {entry.url} <ExternalLink size={10} />
+                              <span className="truncate">{entry.url}</span> <ExternalLink size={10} className="shrink-0" />
                             </a>
                           )}
                         </div>
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
+                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${
                           theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'
                         }`}>
                           {entry.category}
@@ -1026,15 +1029,16 @@ export function PasswordManager() {
                       </div>
 
                       {/* Username Section */}
-                      <div className="space-y-1.5 mb-3">
+                      <div className="space-y-1 mb-3">
                         <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Username / Email</label>
-                        <div className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-xs ${
+                        <div className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-xs ${
                           theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'
                         }`}>
-                          <span className="font-mono select-all truncate max-w-[170px]">{entry.username}</span>
+                          <span className="font-mono select-all truncate flex-1 min-w-0 pr-2">{entry.username}</span>
                           <button 
                             onClick={() => handleCopyToClipboard(entry.username, entry.id, 'Username')}
-                            className="p-1 text-slate-400 hover:text-white transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-white transition-colors shrink-0"
+                            title="Copy Username"
                           >
                             {copiedId === `${entry.id}-Username` ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                           </button>
@@ -1042,25 +1046,27 @@ export function PasswordManager() {
                       </div>
 
                       {/* Password Section */}
-                      <div className="space-y-1.5 mb-4">
+                      <div className="space-y-1 mb-4">
                         <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Secure Password</label>
-                        <div className={`flex items-center justify-between rounded-lg px-3 py-1.5 text-xs ${
+                        <div className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-xs ${
                           theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'
                         }`}>
-                          <span className="font-mono select-all truncate max-w-[170px]">
+                          <span className="font-mono select-all truncate flex-1 min-w-0 pr-2">
                             {isShowing ? (decValue || '••••••••') : '••••••••••••'}
                           </span>
                           
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 shrink-0">
                             <button 
                               onClick={() => setShowPasswordMap(prev => ({ ...prev, [entry.id]: !prev[entry.id] }))}
-                              className="p-1 text-slate-400 hover:text-white transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                              title={isShowing ? 'Hide Password' : 'Show Password'}
                             >
                               {isShowing ? <EyeOff size={14} /> : <Eye size={14} />}
                             </button>
                             <button 
                               onClick={() => handleCopyToClipboard(decValue, entry.id, 'Password')}
-                              className="p-1 text-slate-400 hover:text-white transition-colors"
+                              className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                              title="Copy Password"
                             >
                               {copiedId === `${entry.id}-Password` ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                             </button>
@@ -1080,19 +1086,19 @@ export function PasswordManager() {
 
                       {/* Description / Notes */}
                       {entry.notes && (
-                        <p className="text-xs text-slate-400 border-t border-white/5 pt-3 line-clamp-2 italic mb-4">
+                        <p className="text-xs text-slate-400 border-t border-white/5 pt-2.5 line-clamp-2 italic mb-3">
                           "{entry.notes}"
                         </p>
                       )}
                     </div>
 
                     {/* Footer - Actions */}
-                    <div className="flex items-center justify-between border-t border-white/5 pt-4 mt-auto">
+                    <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-auto">
                       <span className="text-[9px] text-slate-500">
                         Updated {new Date(entry.updatedAt).toLocaleDateString()}
                       </span>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleOpenEdit(entry)}
                           className={`p-2 rounded-lg transition-all ${
@@ -1100,7 +1106,7 @@ export function PasswordManager() {
                           }`}
                           title="Edit Credentials"
                         >
-                          <Edit3 size={12} />
+                          <Edit3 size={13} />
                         </button>
                         <button
                           onClick={() => {
@@ -1108,10 +1114,10 @@ export function PasswordManager() {
                               handleDeleteEntry(entry.id);
                             }
                           }}
-                          className={`p-2 rounded-lg transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20`}
+                          className="p-2 rounded-lg transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20"
                           title="Delete Credentials"
                         >
-                          <Trash2 size={12} />
+                          <Trash2 size={13} />
                         </button>
                       </div>
                     </div>
@@ -1125,27 +1131,27 @@ export function PasswordManager() {
 
       {/* 4. MODAL: ADD / EDIT CREDENTIALS */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-3 sm:p-4 overflow-y-auto">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-2xl my-8 rounded-2xl border shadow-2xl relative flex flex-col max-h-[90vh] ${
+            className={`w-full max-w-2xl my-auto rounded-2xl border shadow-2xl relative flex flex-col max-h-[92vh] ${
               theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center justify-between p-6 border-b border-white/5 shrink-0">
-              <h2 className="text-xl font-bold">{editingEntry ? 'Edit Credentials' : 'Add New Credentials'}</h2>
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-white/5 shrink-0">
+              <h2 className="text-lg sm:text-xl font-bold">{editingEntry ? 'Edit Credentials' : 'Add New Credentials'}</h2>
               <button 
                 onClick={() => setIsModalOpen(false)} 
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-white transition-colors p-1"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-6">
               <form id="credentials-form" onSubmit={handleSaveEntry} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Platform / App Name *</label>
                     <input 
@@ -1176,7 +1182,7 @@ export function PasswordManager() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-1">Username / Email *</label>
                     <input 
@@ -1227,28 +1233,28 @@ export function PasswordManager() {
                     value={modalNotes}
                     onChange={(e) => setModalNotes(e.target.value)}
                     className={`w-full border rounded-lg px-3.5 py-2.5 text-xs sm:text-sm focus:outline-none transition-all ${
-                      theme === 'dark' ? 'bg-black/40 border-white/10 text-white animate-in' : 'bg-slate-50 border-slate-200'
+                      theme === 'dark' ? 'bg-black/40 border-white/10 text-white' : 'bg-slate-50 border-slate-200'
                     }`}
                   />
-                  <span className="text-[10px] text-amber-500 flex items-center gap-1.5 mt-1">
-                    <AlertTriangle size={12} /> এখানে পাসওয়ার্ড লিখবেন না। নোটস বা সংকেতগুলো প্লেইন টেক্সট হিসেবে সরাসরি কার্ডে দেখা যায়। (Do not write passwords here. Notes are stored as plain text hints).
+                  <span className="text-[10px] text-amber-500 flex items-start sm:items-center gap-1.5 mt-1">
+                    <AlertTriangle size={12} className="shrink-0 mt-0.5 sm:mt-0" />
+                    <span>এখানে পাসওয়ার্ড লিখবেন না। নোটস বা সংকেতগুলো প্লেইন টেক্সট হিসেবে সরাসরি কার্ডে দেখা যায়।</span>
                   </span>
                 </div>
               </form>
-
             </div>
 
-            <div className="p-6 border-t border-white/5 flex justify-end gap-3 shrink-0">
+            <div className="p-4 sm:p-6 border-t border-white/5 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 shrink-0">
               <button 
                 onClick={() => setIsModalOpen(false)} 
-                className="px-5 py-2.5 rounded-full font-semibold hover:bg-white/5 transition-colors text-xs"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-full font-semibold hover:bg-white/5 transition-colors text-xs text-center"
               >
                 Cancel
               </button>
               <button 
                 type="submit" 
                 form="credentials-form"
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-7 py-2.5 rounded-full font-bold transition-all shadow-md text-xs uppercase tracking-wider"
+                className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-7 py-2.5 rounded-full font-bold transition-all shadow-md text-xs uppercase tracking-wider text-center"
               >
                 Save Credentials
               </button>
@@ -1259,19 +1265,19 @@ export function PasswordManager() {
 
       {/* 5. MODAL: CHANGE SECURITY LOCK */}
       {isChangeLockOpen && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-3 sm:p-4">
           <motion.div 
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`w-full max-w-md rounded-2xl border shadow-2xl p-6 ${
+            className={`w-full max-w-md my-auto rounded-2xl border shadow-2xl p-4 sm:p-6 ${
               theme === 'dark' ? 'bg-slate-900 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'
             }`}
           >
-            <div className="flex items-center justify-between pb-4 border-b border-white/5 mb-4">
-              <h2 className="text-lg font-bold">Change Vault Lock</h2>
+            <div className="flex items-center justify-between pb-3 sm:pb-4 border-b border-white/5 mb-4">
+              <h2 className="text-base sm:text-lg font-bold">Change Vault Lock</h2>
               <button 
                 onClick={() => setIsChangeLockOpen(false)} 
-                className="text-slate-400 hover:text-white transition-colors"
+                className="text-slate-400 hover:text-white transition-colors p-1"
               >
                 <X size={20} />
               </button>
@@ -1334,18 +1340,18 @@ export function PasswordManager() {
                 />
               </div>
 
-              <div className="pt-4 flex justify-end gap-3 border-t border-white/5">
+              <div className="pt-4 flex flex-col-reverse sm:flex-row justify-end gap-2.5 sm:gap-3 border-t border-white/5">
                 <button 
                   type="button"
                   onClick={() => setIsChangeLockOpen(false)} 
-                  className="px-4 py-2 rounded-full font-semibold hover:bg-white/5 transition-colors text-xs"
+                  className="w-full sm:w-auto px-4 py-2 rounded-full font-semibold hover:bg-white/5 transition-colors text-xs text-center"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={setupInput !== setupConfirmInput || (setupLockType === 'pin' ? setupInput.length !== 4 : setupInput.length < 6)}
-                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-full font-bold transition-all text-xs uppercase tracking-wider disabled:opacity-50"
+                  className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white px-5 py-2 rounded-full font-bold transition-all text-xs uppercase tracking-wider disabled:opacity-50 text-center"
                 >
                   Confirm Change
                 </button>
