@@ -3,13 +3,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Lock, Unlock, Eye, EyeOff, Copy, Check, Shield, ShieldCheck, 
   Plus, Trash2, Edit3, Search, Filter, RefreshCw, KeyRound, 
-  ChevronRight, ArrowRight, X, Sparkles, AlertTriangle, Key, Info, CheckSquare, ExternalLink
+  ChevronRight, ArrowRight, X, Sparkles, AlertTriangle, Key, Info, CheckSquare, ExternalLink,
+  List, LayoutGrid, Globe, Clock, ChevronDown
 } from 'lucide-react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { toast } from 'sonner';
+import { BrandLogo } from './BrandLogo';
+import { PasswordAccordionItem, PasswordEntry } from './PasswordAccordionItem';
 
 // Helper for SHA-256 Hashing (Native Web Crypto API)
 async function sha256(message: string): Promise<string> {
@@ -109,18 +112,6 @@ async function decryptText(hexText: string, keyText: string): Promise<string> {
   }
 }
 
-interface PasswordEntry {
-  id: string;
-  title: string;
-  username: string;
-  passwordEncrypted: string;
-  url: string;
-  category: string;
-  notes: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function PasswordManager() {
   const { user } = useAuth();
   const { theme } = useTheme();
@@ -150,9 +141,18 @@ export function PasswordManager() {
   // Master decryption key (user entered PIN/password)
   const [masterKey, setMasterKey] = useState<string>('');
 
-  // Filtering / Search
+  // Filtering / Search & View Mode
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [viewMode, setViewMode] = useState<'accordion' | 'grid'>('accordion');
+  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => ({
+      ...prev,
+      [id]: !prev[id]
+    }));
+  };
 
   // Edit / Add Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -788,7 +788,7 @@ export function PasswordManager() {
             </div>
           </div>
 
-          {/* Search, Filter & Add Row */}
+          {/* Search, Filter, View Mode & Add Row */}
           <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 sm:gap-4">
             <div className="flex flex-col sm:flex-row items-stretch gap-2.5 sm:gap-3 flex-1">
               {/* Search */}
@@ -806,7 +806,7 @@ export function PasswordManager() {
               </div>
 
               {/* Category selector */}
-              <div className="relative sm:w-48">
+              <div className="relative sm:w-44">
                 <select
                   value={selectedCategory}
                   onChange={(e) => setSelectedCategory(e.target.value)}
@@ -819,6 +819,38 @@ export function PasswordManager() {
                   ))}
                 </select>
                 <Filter size={14} className="absolute right-3.5 top-3 text-slate-400 pointer-events-none" />
+              </div>
+
+              {/* View Mode Toggle: Accordion vs Grid */}
+              <div className={`flex items-center rounded-xl p-1 border shrink-0 ${
+                theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-slate-100 border-slate-200'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('accordion')}
+                  title="List / Accordion View"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'accordion'
+                      ? 'bg-red-500 text-white shadow-sm'
+                      : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <List size={15} />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('grid')}
+                  title="Grid Cards View"
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    viewMode === 'grid'
+                      ? 'bg-red-500 text-white shadow-sm'
+                      : theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  <LayoutGrid size={15} />
+                  <span className="hidden sm:inline">Grid</span>
+                </button>
               </div>
             </div>
 
@@ -973,7 +1005,7 @@ export function PasswordManager() {
             )}
           </AnimatePresence>
 
-          {/* Credentials Cards List */}
+          {/* Credentials List: Accordion vs Grid */}
           {filteredEntries.length === 0 ? (
             <div className={`text-center py-12 sm:py-16 rounded-3xl border ${
               theme === 'dark' ? 'bg-white/[0.01] border-white/5' : 'bg-slate-50 border-slate-100'
@@ -988,8 +1020,35 @@ export function PasswordManager() {
                   : 'Start securing your credentials! Click "Add New Credentials" above.'}
               </p>
             </div>
+          ) : viewMode === 'accordion' ? (
+            /* ACCORDION LIST VIEW */
+            <div className="space-y-2.5 sm:space-y-3">
+              {filteredEntries.map((entry) => {
+                const decValue = decryptedPasswords[entry.id] || '';
+                const isExpanded = !!expandedIds[entry.id];
+
+                return (
+                  <PasswordAccordionItem
+                    key={entry.id}
+                    entry={entry}
+                    decryptedPassword={decValue}
+                    theme={theme}
+                    isExpanded={isExpanded}
+                    onToggleExpand={() => toggleExpand(entry.id)}
+                    onEdit={handleOpenEdit}
+                    onDelete={(id) => {
+                      if (confirm("Are you sure you want to delete these credentials? This is irreversible.")) {
+                        handleDeleteEntry(id);
+                      }
+                    }}
+                    getPasswordStrength={getPasswordStrength}
+                  />
+                );
+              })}
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            /* MODERN GRID CARDS VIEW */
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
               {filteredEntries.map((entry) => {
                 const decValue = decryptedPasswords[entry.id] || '';
                 const strength = getPasswordStrength(decValue);
@@ -1001,55 +1060,65 @@ export function PasswordManager() {
                     layoutId={`entry-card-${entry.id}`}
                     className={`group relative rounded-2xl border p-4 sm:p-5 flex flex-col justify-between hover:scale-[1.01] transition-all duration-300 ${
                       theme === 'dark' 
-                        ? 'bg-gradient-to-br from-slate-900 to-slate-900/60 border-white/5 hover:border-white/10 shadow-lg' 
-                        : 'bg-white border-slate-100 hover:border-slate-200 hover:shadow-md'
+                        ? 'bg-slate-900/80 hover:bg-slate-900 border-white/5 hover:border-white/10 shadow-lg' 
+                        : 'bg-white border-slate-200/80 hover:border-slate-300 hover:shadow-md'
                     }`}
                   >
                     <div>
-                      {/* Title & Category Badge */}
-                      <div className="flex items-start justify-between gap-2 mb-3 sm:mb-4">
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-bold text-base sm:text-lg text-red-500 tracking-tight truncate">{entry.title}</h3>
-                          {entry.url && (
-                            <a 
-                              href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`}
-                              target="_blank" 
-                              rel="noreferrer" 
-                              className="text-xs text-slate-400 hover:text-blue-400 flex items-center gap-1 transition-colors mt-0.5 truncate max-w-full"
-                            >
-                              <span className="truncate">{entry.url}</span> <ExternalLink size={10} className="shrink-0" />
-                            </a>
-                          )}
+                      {/* Brand Logo, Title & Category Badge */}
+                      <div className="flex items-start justify-between gap-2.5 mb-3.5">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <BrandLogo title={entry.title} url={entry.url} size="sm" />
+                          <div className="min-w-0 flex-1">
+                            <h3 className={`font-bold text-sm sm:text-base tracking-tight truncate ${
+                              theme === 'dark' ? 'text-white' : 'text-slate-900'
+                            }`}>
+                              {entry.title}
+                            </h3>
+                            {entry.url && (
+                              <a 
+                                href={entry.url.startsWith('http') ? entry.url : `https://${entry.url}`}
+                                target="_blank" 
+                                rel="noreferrer" 
+                                className="text-[11px] text-slate-400 hover:text-blue-400 flex items-center gap-1 transition-colors mt-0.5 truncate max-w-full"
+                              >
+                                <span className="truncate">{entry.url.replace(/^https?:\/\//, '')}</span> <ExternalLink size={10} className="shrink-0" />
+                              </a>
+                            )}
+                          </div>
                         </div>
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider shrink-0 ${
-                          theme === 'dark' ? 'bg-white/5 text-slate-300' : 'bg-slate-100 text-slate-600'
+
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0 ${
+                          theme === 'dark' ? 'bg-white/5 text-slate-300 border border-white/5' : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}>
-                          {entry.category}
+                          {entry.category || 'General'}
                         </span>
                       </div>
 
                       {/* Username Section */}
                       <div className="space-y-1 mb-3">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Username / Email</label>
-                        <div className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-xs ${
-                          theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Username / Email</label>
+                        <div className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs border ${
+                          theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'
                         }`}>
                           <span className="font-mono select-all truncate flex-1 min-w-0 pr-2">{entry.username}</span>
                           <button 
                             onClick={() => handleCopyToClipboard(entry.username, entry.id, 'Username')}
-                            className="p-1.5 text-slate-400 hover:text-white transition-colors shrink-0"
+                            className={`p-1 rounded-lg transition-colors shrink-0 ${
+                              copiedId === `${entry.id}-Username` ? 'text-emerald-500' : 'text-slate-400 hover:text-white'
+                            }`}
                             title="Copy Username"
                           >
-                            {copiedId === `${entry.id}-Username` ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                            {copiedId === `${entry.id}-Username` ? <Check size={14} /> : <Copy size={14} />}
                           </button>
                         </div>
                       </div>
 
                       {/* Password Section */}
-                      <div className="space-y-1 mb-4">
-                        <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Secure Password</label>
-                        <div className={`flex items-center justify-between gap-2 rounded-lg px-3 py-1.5 text-xs ${
-                          theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'
+                      <div className="space-y-1 mb-3.5">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Secure Password</label>
+                        <div className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 text-xs border ${
+                          theme === 'dark' ? 'bg-black/30 border-white/5' : 'bg-slate-50 border-slate-200'
                         }`}>
                           <span className="font-mono select-all truncate flex-1 min-w-0 pr-2">
                             {isShowing ? (decValue || '••••••••') : '••••••••••••'}
@@ -1058,17 +1127,19 @@ export function PasswordManager() {
                           <div className="flex items-center gap-1 shrink-0">
                             <button 
                               onClick={() => setShowPasswordMap(prev => ({ ...prev, [entry.id]: !prev[entry.id] }))}
-                              className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                              className="p-1 text-slate-400 hover:text-white transition-colors"
                               title={isShowing ? 'Hide Password' : 'Show Password'}
                             >
                               {isShowing ? <EyeOff size={14} /> : <Eye size={14} />}
                             </button>
                             <button 
                               onClick={() => handleCopyToClipboard(decValue, entry.id, 'Password')}
-                              className="p-1.5 text-slate-400 hover:text-white transition-colors"
+                              className={`p-1 transition-colors ${
+                                copiedId === `${entry.id}-Password` ? 'text-emerald-500' : 'text-slate-400 hover:text-white'
+                              }`}
                               title="Copy Password"
                             >
-                              {copiedId === `${entry.id}-Password` ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                              {copiedId === `${entry.id}-Password` ? <Check size={14} /> : <Copy size={14} />}
                             </button>
                           </div>
                         </div>
@@ -1086,23 +1157,25 @@ export function PasswordManager() {
 
                       {/* Description / Notes */}
                       {entry.notes && (
-                        <p className="text-xs text-slate-400 border-t border-white/5 pt-2.5 line-clamp-2 italic mb-3">
+                        <p className={`text-xs p-2.5 rounded-xl border line-clamp-2 italic mb-3 ${
+                          theme === 'dark' ? 'bg-white/[0.02] border-white/5 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-600'
+                        }`}>
                           "{entry.notes}"
                         </p>
                       )}
                     </div>
 
                     {/* Footer - Actions */}
-                    <div className="flex items-center justify-between border-t border-white/5 pt-3 mt-auto">
-                      <span className="text-[9px] text-slate-500">
-                        Updated {new Date(entry.updatedAt).toLocaleDateString()}
+                    <div className="flex items-center justify-between border-t border-inherit pt-3 mt-auto">
+                      <span className="text-[10px] text-slate-500">
+                        {new Date(entry.updatedAt || entry.createdAt).toLocaleDateString()}
                       </span>
 
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => handleOpenEdit(entry)}
-                          className={`p-2 rounded-lg transition-all ${
-                            theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                          className={`p-2 rounded-xl transition-all border ${
+                            theme === 'dark' ? 'bg-white/5 hover:bg-white/10 border-white/5 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-600'
                           }`}
                           title="Edit Credentials"
                         >
@@ -1114,7 +1187,7 @@ export function PasswordManager() {
                               handleDeleteEntry(entry.id);
                             }
                           }}
-                          className="p-2 rounded-lg transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20"
+                          className="p-2 rounded-xl transition-all bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20"
                           title="Delete Credentials"
                         >
                           <Trash2 size={13} />
