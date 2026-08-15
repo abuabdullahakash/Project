@@ -212,11 +212,11 @@ export function GlobalNotesDrawer({ isOpen, onClose, onNavigate, initialMode = '
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={`relative w-full ${
+            className={`relative w-full max-w-full ${
               activeTab === 'ai-vault' 
-                ? 'md:w-[95vw] lg:w-[90vw] xl:w-[85vw] max-w-6xl' 
+                ? 'md:w-[95vw] lg:w-[90vw] xl:w-[85vw] md:max-w-6xl' 
                 : 'md:w-1/2 md:max-w-[50vw] max-w-md'
-            } h-full shadow-2xl flex flex-col border-l transition-all duration-300 ${
+            } h-full shadow-2xl flex flex-col border-l overflow-hidden transition-all duration-300 ${
               theme === 'dark' ? 'bg-[#0f172a] border-white/5' : 'bg-white border-slate-200'
             }`}
           >

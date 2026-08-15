@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Sparkles, Mail, Layers, X, HelpCircle, 
   Copy, FolderPlus, Tag, Settings, Eye, CheckCircle, Clock, Link as LinkIcon,
   Code, Bookmark, Share2, MessageSquare, Terminal, RefreshCw, ArrowLeft,
-  LayoutGrid, List
+  LayoutGrid, List, AlertTriangle
 } from 'lucide-react';
 import { 
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc 
@@ -113,6 +113,10 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
   const [activeViewNote, setActiveViewNote] = useState<AINote | null>(null);
   const [editingNote, setEditingNote] = useState<AINote | null>(null);
+
+  // In-app Delete Confirmation states (bypasses iframe blocked window.confirm)
+  const [deletingCategory, setDeletingCategory] = useState<AICategory | null>(null);
+  const [deletingNote, setDeletingNote] = useState<AINote | null>(null);
 
   // Copy feedbacks
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -386,19 +390,33 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
     }
   };
 
-  // Delete Note
-  const handleDeleteNote = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this AI note? This action cannot be undone.')) {
-      return;
+  // Delete Note Trigger (Opens In-App Confirm Modal)
+  const handleDeleteNote = (noteOrId: AINote | string) => {
+    if (typeof noteOrId === 'string') {
+      const found = notes.find((n) => n.id === noteOrId);
+      if (found) {
+        setDeletingNote(found);
+      } else {
+        setDeletingNote({ id: noteOrId, chatTitle: 'this note' } as AINote);
+      }
+    } else {
+      setDeletingNote(noteOrId);
     }
+  };
+
+  // Confirm Delete Note Execution
+  const handleConfirmDeleteNote = async () => {
+    if (!deletingNote) return;
+    const noteId = deletingNote.id;
     try {
-      await deleteDoc(doc(db, 'aiNotes', id));
-      toast.success('AI Note deleted.');
-      if (activeViewNote?.id === id) {
+      await deleteDoc(doc(db, 'aiNotes', noteId));
+      toast.success('AI Note deleted successfully.');
+      if (activeViewNote?.id === noteId) {
         setActiveViewNote(null);
       }
+      setDeletingNote(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, `aiNotes/${id}`);
+      handleFirestoreError(error, OperationType.DELETE, `aiNotes/${noteId}`);
     }
   };
 
@@ -484,16 +502,19 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
     }
   };
 
-  const handleDeleteCategory = async (cat: AICategory) => {
+  // Delete Category Trigger (Opens In-App Confirm Modal)
+  const handleDeleteCategory = (cat: AICategory) => {
     if (cat.name === 'General') {
       toast.error('The default "General" category cannot be deleted.');
       return;
     }
+    setDeletingCategory(cat);
+  };
 
-    if (!window.confirm(`Delete category "${cat.name}"? Notes under this category will be moved to "General".`)) {
-      return;
-    }
-
+  // Confirm Delete Category Execution
+  const handleConfirmDeleteCategory = async () => {
+    if (!deletingCategory) return;
+    const cat = deletingCategory;
     try {
       await deleteDoc(doc(db, 'aiCategories', cat.id));
 
@@ -510,7 +531,8 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
         setSelectedCategory('All');
       }
 
-      toast.success(`Category deleted. Associated notes moved to "General".`);
+      toast.success(`Category "${cat.name}" deleted. Associated notes moved to "General".`);
+      setDeletingCategory(null);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `aiCategories/${cat.id}`);
     }
@@ -571,23 +593,23 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
   };
 
   return (
-    <div className={`transition-colors duration-200 flex flex-col flex-1 ${
+    <div className={`transition-colors duration-200 flex flex-col flex-1 min-w-0 w-full max-w-full overflow-x-hidden ${
       isEmbedded 
         ? 'w-full h-full' 
         : `min-h-screen pb-16 ${theme === 'dark' ? 'bg-[#0b0f19] text-slate-100' : 'bg-slate-50 text-slate-900'}`
     }`}>
       {/* ================= TOP HEADER ================= */}
-      <div className={`shrink-0 border-b backdrop-blur-md transition-colors ${
+      <div className={`shrink-0 border-b backdrop-blur-md transition-colors min-w-0 w-full max-w-full ${
         isEmbedded 
           ? theme === 'dark' ? 'bg-white/[0.02] border-white/5 px-3 sm:px-6 py-3 sm:py-4' : 'bg-slate-50 border-slate-200 px-3 sm:px-6 py-3 sm:py-4'
           : `sticky top-0 z-30 ${theme === 'dark' ? 'bg-[#0f172a]/90 border-white/10' : 'bg-white/90 border-slate-200'} px-3 sm:px-6 lg:px-8 py-3 sm:py-4`
       }`}>
-        <div className={`${isEmbedded ? 'w-full' : 'max-w-7xl mx-auto'}`}>
+        <div className={`min-w-0 w-full ${isEmbedded ? 'w-full' : 'max-w-7xl mx-auto'}`}>
           {/* Mobile & Tablet Header Layout */}
-          <div className="flex flex-col gap-2.5 sm:gap-3">
+          <div className="flex flex-col gap-2.5 sm:gap-3 min-w-0 w-full">
             
             {/* Row 1: Back/Switch + Title + (Close Button on right for mobile/tablet) */}
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2 min-w-0 w-full">
               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                 {onSwitchToGeneralNotes ? (
                   <button
@@ -622,13 +644,13 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                     <h1 className={`text-sm sm:text-base md:text-lg font-bold tracking-tight truncate ${
                       theme === 'dark' ? 'text-white' : 'text-slate-900'
                     }`}>
                       AI Chat Notes Vault
                     </h1>
-                    <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span className="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-widest bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
                       Table View
                     </span>
                   </div>
@@ -679,7 +701,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
             </div>
 
             {/* Row 2 on Mobile screens: Categories & Add Note buttons */}
-            <div className="grid grid-cols-2 gap-2 sm:hidden pt-0.5">
+            <div className="grid grid-cols-2 gap-2 sm:hidden pt-0.5 w-full">
               <button
                 onClick={() => setIsCategoryModalOpen(true)}
                 className={`flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold uppercase tracking-wider rounded-xl border transition-all ${
@@ -706,20 +728,20 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
       </div>
 
       {/* ================= MAIN CONTAINER ================= */}
-      <div className={`flex-1 overflow-y-auto space-y-4 sm:space-y-5 ${
+      <div className={`flex-1 overflow-y-auto overflow-x-hidden min-w-0 w-full max-w-full space-y-3.5 sm:space-y-5 ${
         isEmbedded ? 'p-3 sm:p-5 lg:p-6' : 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-4 sm:pt-6'
       }`}>
 
         {/* Search & Category Pills Filter Bar */}
-        <div className={`p-3 sm:p-4 md:p-5 rounded-2xl border transition-all ${
+        <div className={`p-3 sm:p-4 md:p-5 rounded-2xl border transition-all min-w-0 w-full max-w-full overflow-hidden ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.3)]' 
             : 'bg-white border-slate-200 shadow-sm'
         }`}>
-          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3 md:gap-4 justify-between">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-2.5 sm:gap-3 md:gap-4 justify-between min-w-0 w-full">
             
             {/* Search Input */}
-            <div className="relative flex-1 min-w-0">
+            <div className="relative flex-1 min-w-0 w-full">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 ${
                 theme === 'dark' ? 'text-slate-500' : 'text-slate-400'
               }`} size={15} />
@@ -745,12 +767,12 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
             </div>
 
             {/* Quick Filters for Provider & Type (2-column on mobile, inline on tablet/desktop) */}
-            <div className="grid grid-cols-2 sm:flex items-center gap-2 shrink-0">
+            <div className="grid grid-cols-2 sm:flex items-center gap-2 min-w-0 w-full sm:w-auto shrink-0">
               {/* Provider Select */}
               <select
                 value={selectedProvider}
                 onChange={(e) => setSelectedProvider(e.target.value)}
-                className={`w-full sm:w-auto px-2.5 sm:px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none transition-all truncate ${
+                className={`w-full sm:w-auto min-w-0 px-2.5 sm:px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none transition-all truncate ${
                   theme === 'dark'
                     ? 'bg-black/40 border-white/10 text-slate-300 focus:border-indigo-500/50'
                     : 'bg-slate-50 border-slate-300 text-slate-700 focus:border-indigo-500'
@@ -766,7 +788,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className={`w-full sm:w-auto px-2.5 sm:px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none transition-all truncate ${
+                className={`w-full sm:w-auto min-w-0 px-2.5 sm:px-3 py-2 border rounded-xl text-xs font-semibold focus:outline-none transition-all truncate ${
                   theme === 'dark'
                     ? 'bg-black/40 border-white/10 text-slate-300 focus:border-indigo-500/50'
                     : 'bg-slate-50 border-slate-300 text-slate-700 focus:border-indigo-500'
@@ -782,7 +804,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
           </div>
 
           {/* Category Tabs Scroll Bar */}
-          <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-white/5 relative flex items-center">
+          <div className="mt-3 pt-3 border-t border-slate-200/60 dark:border-white/5 relative flex items-center min-w-0 w-full max-w-full overflow-hidden">
             {/* Scroll Left Button */}
             <button
               onClick={() => scrollTabs('left')}
@@ -799,7 +821,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
             {/* Categories Carousel */}
             <div
               ref={scrollContainerRef}
-              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-1 flex-1 touch-pan-x"
+              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] py-1 min-w-0 flex-1 w-0 touch-pan-x"
             >
               {/* All Notes Tab */}
               <button
@@ -870,28 +892,28 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
         </div>
 
         {/* ================= AI NOTES TABLE / LIST ================= */}
-        <div className={`border rounded-2xl overflow-hidden transition-all ${
+        <div className={`border rounded-2xl overflow-hidden transition-all min-w-0 w-full max-w-full ${
           theme === 'dark' 
             ? 'bg-[#111827] border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.35)]' 
             : 'bg-white border-slate-200 shadow-sm'
         }`}>
           {/* Table Header Top Bar */}
-          <div className="p-3.5 sm:p-4 border-b border-slate-200/50 dark:border-white/5 flex flex-wrap items-center justify-between gap-2.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
+          <div className="p-3.5 sm:p-4 border-b border-slate-200/50 dark:border-white/5 flex flex-wrap items-center justify-between gap-2.5 min-w-0 w-full">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+              <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse shrink-0"></div>
               <span className="text-xs sm:text-sm font-bold flex items-center gap-2">
                 <span>Notes ({filteredNotes.length})</span>
               </span>
               {selectedCategory !== 'All' && (
-                <span className="text-[10px] sm:text-[11px] font-extrabold uppercase px-2 sm:px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                <span className="text-[10px] sm:text-[11px] font-extrabold uppercase px-2 sm:px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 truncate max-w-[140px]">
                   {selectedCategory}
                 </span>
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {searchQuery && (
-                <span className="text-[10px] sm:text-[11px] bg-slate-500/10 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg font-medium">
+                <span className="text-[10px] sm:text-[11px] bg-slate-500/10 text-slate-400 px-2 sm:px-2.5 py-1 rounded-lg font-medium truncate max-w-[100px] sm:max-w-[160px]">
                   "{searchQuery}"
                 </span>
               )}
@@ -1033,12 +1055,12 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                                 theme === 'dark'
                                   ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
                                   : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                              }`} title={`${note.questionCount || 1}টি প্রশ্ন / টপিক`}>
+                              }`} title={`${note.questionCount || 1} Words`}>
                                 ({note.questionCount || 1})
                               </span>
                             </div>
 
-                            {/* Bengali Hover Tooltip */}
+                            {/* Hover Tooltip */}
                             <div className="absolute left-0 bottom-full mb-2 hidden group-hover/title:flex flex-col z-30 pointer-events-none transition-all duration-200">
                               <div className={`px-3 py-1.5 rounded-xl shadow-2xl text-xs font-bold border flex items-center gap-1.5 whitespace-nowrap ${
                                 theme === 'dark' 
@@ -1046,7 +1068,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                                   : 'bg-white border-indigo-200 text-indigo-950 shadow-indigo-200/50'
                               }`}>
                                 <HelpCircle size={14} className="text-indigo-500 shrink-0" />
-                                <span>এখানে {note.questionCount || 1}টি প্রশ্ন/টপিক আছে</span>
+                                <span>Word count: {note.questionCount || 1}</span>
                               </div>
                               <div className={`w-2.5 h-2.5 rotate-45 border-r border-b ml-5 -mt-1.5 ${
                                 theme === 'dark' ? 'bg-slate-900 border-indigo-500/40' : 'bg-white border-indigo-200'
@@ -1174,7 +1196,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
 
           {/* Cards Grid View (shown when viewMode === 'grid' or (viewMode === 'auto' on tablet/mobile screens < lg)) */}
           {!loading && filteredNotes.length > 0 && (
-            <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : viewMode === 'table' ? 'hidden' : 'grid grid-cols-1 sm:grid-cols-2 lg:hidden'} p-3 sm:p-4 gap-3 sm:gap-4`}>
+            <div className={`${viewMode === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : viewMode === 'table' ? 'hidden' : 'grid grid-cols-1 sm:grid-cols-2 lg:hidden'} p-3 sm:p-4 gap-3 sm:gap-4 min-w-0 w-full max-w-full`}>
               {filteredNotes.map((note, index) => {
                 const serialIndex = index + 1;
                 const serialFormatted = serialIndex < 10 ? `0${serialIndex}` : `${serialIndex}`;
@@ -1182,24 +1204,24 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                 return (
                   <div
                     key={note.id}
-                    className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col justify-between space-y-3 transition-all hover:border-indigo-500/40 hover:shadow-md ${
+                    className={`p-3.5 sm:p-4 rounded-2xl border flex flex-col justify-between space-y-3 transition-all hover:border-indigo-500/40 hover:shadow-md min-w-0 w-full max-w-full overflow-hidden ${
                       theme === 'dark'
                         ? 'bg-black/25 border-white/10 text-slate-200 hover:bg-white/[0.03]'
                         : 'bg-white border-slate-200 text-slate-800 shadow-sm hover:bg-slate-50/50'
                     }`}
                   >
-                    <div className="space-y-2.5">
+                    <div className="space-y-2.5 min-w-0 w-full">
                       {/* Top row: Serial # + AI Provider + Question Count */}
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-mono font-extrabold border ${
+                      <div className="flex items-center justify-between gap-2 min-w-0 w-full">
+                        <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                          <span className={`inline-flex items-center justify-center px-2 py-0.5 rounded text-[11px] font-mono font-extrabold border shrink-0 ${
                             theme === 'dark'
                               ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
                               : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                           }`}>
                             #{serialFormatted}
                           </span>
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getProviderBadgeClass(note.aiProvider)}`}>
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border truncate max-w-[120px] sm:max-w-[140px] shrink-0 ${getProviderBadgeClass(note.aiProvider)}`}>
                             {note.aiProvider}
                           </span>
                         </div>
@@ -1209,15 +1231,15 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                             ? 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
                             : 'bg-indigo-50 text-indigo-700 border-indigo-200'
                         }`}>
-                          ({note.questionCount || 1}টি প্রশ্ন)
+                          {note.questionCount || 1} Words
                         </span>
                       </div>
 
                       {/* Chat Title */}
-                      <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start justify-between gap-2 min-w-0 w-full">
                         <h4 
                           onClick={() => setActiveViewNote(note)}
-                          className={`font-bold text-sm leading-snug flex-1 cursor-pointer hover:text-indigo-400 transition-colors line-clamp-2 ${
+                          className={`font-bold text-sm leading-snug flex-1 cursor-pointer hover:text-indigo-400 transition-colors line-clamp-2 break-words ${
                             theme === 'dark' ? 'text-slate-100' : 'text-slate-900'
                           }`}
                         >
@@ -1233,28 +1255,28 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                       </div>
 
                       {/* Category & Type Badges */}
-                      <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
-                        <span className={`px-2.5 py-0.5 rounded-md font-bold border inline-flex items-center gap-1 ${
+                      <div className="flex flex-wrap items-center gap-1.5 text-[10px] min-w-0 w-full">
+                        <span className={`px-2.5 py-0.5 rounded-md font-bold border inline-flex items-center gap-1 min-w-0 max-w-[150px] ${
                           theme === 'dark' ? 'bg-white/5 text-slate-300 border-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'
                         }`}>
-                          <Tag size={10} className="text-indigo-400" />
-                          <span className="truncate max-w-[120px]">{note.category || 'General'}</span>
+                          <Tag size={10} className="text-indigo-400 shrink-0" />
+                          <span className="truncate">{note.category || 'General'}</span>
                         </span>
-                        <span className={`px-2 py-0.5 rounded uppercase font-extrabold border ${getTypeBadgeClass(note.type)}`}>
+                        <span className={`px-2 py-0.5 rounded uppercase font-extrabold border shrink-0 ${getTypeBadgeClass(note.type)}`}>
                           {note.type}
                         </span>
                       </div>
 
                       {/* Gmail */}
                       {note.gmail && (
-                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono">
+                        <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-mono min-w-0 w-full">
                           <Mail size={12} className="shrink-0 text-slate-400" />
                           <span className="truncate">{note.gmail}</span>
                         </div>
                       )}
 
                       {/* Notes Snippet */}
-                      <p className={`text-xs line-clamp-2 p-2.5 rounded-xl border ${
+                      <p className={`text-xs line-clamp-2 p-2.5 rounded-xl border break-words ${
                         theme === 'dark'
                           ? 'bg-black/30 text-slate-300 border-white/5'
                           : 'bg-slate-50 text-slate-700 border-slate-200 font-medium'
@@ -1264,11 +1286,11 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                     </div>
 
                     {/* Action Bar */}
-                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/50 dark:border-white/5 text-xs">
-                      <span className="text-[10px] text-slate-400">
+                    <div className="flex items-center justify-between pt-2.5 border-t border-slate-200/50 dark:border-white/5 text-xs min-w-0 w-full">
+                      <span className="text-[10px] text-slate-400 shrink-0">
                         {new Date(note.createdAt).toLocaleDateString()}
                       </span>
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <button
                           onClick={() => setActiveViewNote(note)}
                           className="px-2.5 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold flex items-center gap-1 text-xs"
@@ -1317,7 +1339,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
       {/* ================= MODAL 1: ADD / EDIT AI NOTE ================= */}
       <AnimatePresence>
         {isAddModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1330,25 +1352,25 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border flex flex-col ${
+              className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl shadow-2xl border flex flex-col scrollbar-thin ${
                 theme === 'dark' 
                   ? 'bg-[#0f172a] border-white/10 text-white' 
                   : 'bg-white border-slate-200 text-slate-900'
               }`}
             >
               {/* Modal Header */}
-              <div className={`p-5 border-b flex items-center justify-between sticky top-0 z-10 ${
-                theme === 'dark' ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'
+              <div className={`p-4 sm:p-5 border-b flex items-center justify-between sticky top-0 z-10 backdrop-blur-md ${
+                theme === 'dark' ? 'bg-[#0f172a]/95 border-white/10' : 'bg-white/95 border-slate-200'
               }`}>
-                <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
-                    <Bot size={20} />
+                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 shrink-0">
+                    <Bot size={18} className="sm:w-5 sm:h-5" />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-base">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm sm:text-base truncate">
                       {editingNote ? 'Edit AI Chat Note' : 'Add New AI Chat Note'}
                     </h3>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <p className={`text-[11px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                       Save questions, notes, and AI solutions in the table vault
                     </p>
                   </div>
@@ -1356,8 +1378,8 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
 
                 <button
                   onClick={() => setIsAddModalOpen(false)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    theme === 'dark' ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-100'
+                  className={`p-2 rounded-xl transition-colors shrink-0 ${
+                    theme === 'dark' ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <X size={18} />
@@ -1365,7 +1387,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
               </div>
 
               {/* Form Content */}
-              <form onSubmit={handleSaveNote} className="p-6 space-y-4">
+              <form onSubmit={handleSaveNote} className="p-4 sm:p-6 space-y-3.5 sm:space-y-4">
                 
                 {/* 1. Chat Title */}
                 <div>
@@ -1389,7 +1411,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                 </div>
 
                 {/* 2-Column: AI Provider & Category */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
                   {/* AI Provider */}
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${
@@ -1442,7 +1464,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                         className="text-[11px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1"
                       >
                         <Plus size={12} />
-                        <span>+ New Category</span>
+                        <span>New Category</span>
                       </button>
                     </div>
 
@@ -1464,8 +1486,8 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                   </div>
                 </div>
 
-                {/* 3-Column: Type, Question Count & Gmail Account */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* 3-Column: Type, Word Count & Gmail Account */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
                   {/* Type */}
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${
@@ -1490,17 +1512,17 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                     </select>
                   </div>
 
-                  {/* Question Count */}
+                  {/* Word Count */}
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${
                       theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
                     }`}>
-                      Q&A Count
+                      Word Count
                     </label>
                     <input
                       type="number"
                       min={1}
-                      max={100}
+                      max={100000}
                       value={formData.questionCount}
                       onChange={(e) => setFormData({ ...formData, questionCount: parseInt(e.target.value) || 1 })}
                       className={`w-full px-3.5 py-2.5 rounded-xl border text-sm font-medium focus:outline-none focus:ring-2 transition-all ${
@@ -1565,7 +1587,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                     <span className="text-[10px] text-slate-400">Markdown & Code supported</span>
                   </div>
                   <textarea
-                    rows={5}
+                    rows={4}
                     placeholder="Paste the full AI answer, generated code snippets, mathematical derivations, or solutions..."
                     value={formData.aiResponse}
                     onChange={(e) => setFormData({ ...formData, aiResponse: e.target.value })}
@@ -1599,7 +1621,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                 </div>
 
                 {/* Form Buttons */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-200/50 dark:border-white/5">
+                <div className="flex items-center justify-end gap-2.5 pt-3.5 border-t border-slate-200/50 dark:border-white/5">
                   <button
                     type="button"
                     onClick={() => setIsAddModalOpen(false)}
@@ -1614,7 +1636,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
 
                   <button
                     type="submit"
-                    className="px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
+                    className="px-5 sm:px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-indigo-600/30 active:scale-95"
                   >
                     {editingNote ? 'Save Changes' : 'Save AI Note'}
                   </button>
@@ -1628,7 +1650,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
       {/* ================= MODAL 2: CATEGORY MANAGER ================= */}
       <AnimatePresence>
         {isCategoryModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1641,22 +1663,22 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className={`relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl shadow-2xl border flex flex-col ${
+              className={`relative w-full max-w-md max-h-[85vh] overflow-y-auto rounded-2xl sm:rounded-3xl shadow-2xl border flex flex-col scrollbar-thin ${
                 theme === 'dark' 
                   ? 'bg-[#0f172a] border-white/10 text-white' 
                   : 'bg-white border-slate-200 text-slate-900'
               }`}
             >
-              <div className={`p-5 border-b flex items-center justify-between sticky top-0 z-10 ${
-                theme === 'dark' ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'
+              <div className={`p-4 sm:p-5 border-b flex items-center justify-between sticky top-0 z-10 backdrop-blur-md ${
+                theme === 'dark' ? 'bg-[#0f172a]/95 border-white/10' : 'bg-white/95 border-slate-200'
               }`}>
-                <div className="flex items-center gap-2">
-                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500 shrink-0">
                     <FolderPlus size={18} />
                   </div>
-                  <div>
-                    <h3 className="font-bold text-base">Manage AI Categories</h3>
-                    <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm sm:text-base truncate">Manage AI Categories</h3>
+                    <p className={`text-[11px] sm:text-xs truncate ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
                       Organize your notes into custom categories
                     </p>
                   </div>
@@ -1664,17 +1686,17 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
 
                 <button
                   onClick={() => setIsCategoryModalOpen(false)}
-                  className={`p-2 rounded-lg transition-colors ${
-                    theme === 'dark' ? 'text-slate-400 hover:bg-white/10' : 'text-slate-500 hover:bg-slate-100'
+                  className={`p-2 rounded-xl transition-colors shrink-0 ${
+                    theme === 'dark' ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                   }`}
                 >
                   <X size={18} />
                 </button>
               </div>
 
-              <div className="p-5 space-y-5">
+              <div className="p-4 sm:p-5 space-y-4">
                 {/* Create New Category */}
-                <div className={`p-4 rounded-xl border ${
+                <div className={`p-3.5 sm:p-4 rounded-xl border ${
                   theme === 'dark' ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'
                 }`}>
                   <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${
@@ -1685,13 +1707,13 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                   <div className="flex gap-2">
                     <input
                       type="text"
-                      placeholder="e.g. JavaScript, Algorithms, Exam 2026..."
+                      placeholder="e.g. JavaScript, Physics, Project..."
                       value={newCategoryName}
                       onChange={(e) => setNewCategoryName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleCreateCategory();
                       }}
-                      className={`flex-1 px-3 py-2 rounded-lg border text-sm focus:outline-none focus:ring-2 transition-all ${
+                      className={`flex-1 px-3 py-2 rounded-xl border text-xs sm:text-sm focus:outline-none focus:ring-2 transition-all ${
                         theme === 'dark'
                           ? 'bg-black/40 border-white/10 text-white focus:border-indigo-500'
                           : 'bg-white border-slate-300 text-slate-900 focus:border-indigo-500'
@@ -1700,7 +1722,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                     <button
                       onClick={handleCreateCategory}
                       disabled={!newCategoryName.trim()}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-xs font-bold uppercase tracking-wider transition-all shadow-md active:scale-95"
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
                     >
                       Add
                     </button>
@@ -1715,7 +1737,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                     Existing Categories ({categories.length})
                   </label>
 
-                  <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+                  <div className="space-y-1.5 max-h-56 sm:max-h-64 overflow-y-auto pr-1">
                     {categories.map((cat) => {
                       const count = notes.filter((n) => n.category === cat.name).length;
                       const isEditing = editingCategoryId === cat.id;
@@ -1757,17 +1779,17 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                             </div>
                           ) : (
                             <>
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
                                 <Tag size={13} className="text-indigo-400 shrink-0" />
-                                <span className="font-bold text-xs">{cat.name}</span>
-                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+                                <span className="font-bold text-xs truncate max-w-[150px]">{cat.name}</span>
+                                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono shrink-0 ${
                                   theme === 'dark' ? 'bg-white/10 text-slate-400' : 'bg-slate-200 text-slate-600'
                                 }`}>
-                                  {count} notes
+                                  {count}
                                 </span>
                               </div>
 
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1 shrink-0">
                                 <button
                                   onClick={() => {
                                     setEditingCategoryId(cat.id);
@@ -1797,7 +1819,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                 </div>
               </div>
 
-              <div className={`p-4 border-t flex justify-end ${
+              <div className={`p-3.5 sm:p-4 border-t flex justify-end ${
                 theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50 border-slate-200'
               }`}>
                 <button
@@ -1815,7 +1837,7 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
       {/* ================= MODAL 3: FULL NOTE READER & CODE VIEWER ================= */}
       <AnimatePresence>
         {activeViewNote && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1828,81 +1850,103 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
               initial={{ opacity: 0, scale: 0.95, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border flex flex-col ${
+              className={`relative w-full max-w-2xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-2xl sm:rounded-3xl shadow-2xl border flex flex-col scrollbar-thin ${
                 theme === 'dark' 
                   ? 'bg-[#0f172a] border-white/15 text-white' 
                   : 'bg-white border-slate-200 text-slate-900'
               }`}
             >
               {/* Reader Header */}
-              <div className={`p-6 border-b flex items-start justify-between gap-4 sticky top-0 z-10 ${
-                theme === 'dark' ? 'bg-[#0f172a] border-white/10' : 'bg-white border-slate-200'
+              <div className={`p-4 sm:p-5 border-b sticky top-0 z-20 backdrop-blur-xl ${
+                theme === 'dark' ? 'bg-[#0f172a]/95 border-white/10' : 'bg-white/95 border-slate-200'
               }`}>
-                <div className="space-y-2 flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getProviderBadgeClass(activeViewNote.aiProvider)}`}>
+                {/* Top Row: Provider & Category Badges on Left, Actions on Right */}
+                <div className="flex items-center justify-between gap-2 mb-2.5">
+                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border shrink-0 ${getProviderBadgeClass(activeViewNote.aiProvider)}`}>
                       {activeViewNote.aiProvider}
                     </span>
-                    <span className={`px-2.5 py-0.5 rounded-lg text-[10px] font-bold border ${
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border inline-flex items-center gap-1.5 shrink-0 ${
                       theme === 'dark' ? 'bg-white/5 text-slate-300 border-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'
                     }`}>
-                      {activeViewNote.category || 'General'}
+                      <Tag size={11} className="text-indigo-400 shrink-0" />
+                      <span className="truncate max-w-[120px] sm:max-w-[180px]">{activeViewNote.category || 'General'}</span>
                     </span>
-                    <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase tracking-wider border ${getTypeBadgeClass(activeViewNote.type)}`}>
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wider border shrink-0 ${getTypeBadgeClass(activeViewNote.type)}`}>
                       {activeViewNote.type}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      ({activeViewNote.questionCount || 1}টি প্রশ্ন / টপিক)
                     </span>
                   </div>
 
-                  <h2 className="text-xl font-extrabold leading-snug">
-                    {activeViewNote.chatTitle}
-                  </h2>
+                  {/* Actions Cluster */}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={() => {
+                        handleOpenEditModal(activeViewNote);
+                        setActiveViewNote(null);
+                      }}
+                      className={`p-2 rounded-xl border transition-all ${
+                        theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
+                      }`}
+                      title="Edit Note"
+                    >
+                      <Edit size={14} />
+                    </button>
 
-                  {activeViewNote.gmail && (
-                    <div className="flex items-center gap-1.5 text-xs text-slate-400 font-mono">
-                      <Mail size={13} />
-                      <span>{activeViewNote.gmail}</span>
-                    </div>
-                  )}
+                    <button
+                      onClick={() => handleDeleteNote(activeViewNote)}
+                      className="p-2 rounded-xl border border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-all"
+                      title="Delete Note"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+
+                    <button
+                      onClick={() => setActiveViewNote(null)}
+                      className={`p-2 rounded-xl border border-transparent transition-all ${
+                        theme === 'dark' ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                      }`}
+                      title="Close"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      handleOpenEditModal(activeViewNote);
-                      setActiveViewNote(null);
-                    }}
-                    className={`p-2 rounded-xl border transition-all ${
-                      theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200'
-                    }`}
-                    title="Edit Note"
-                  >
-                    <Edit size={16} />
-                  </button>
+                {/* Chat Title */}
+                <h2 className="text-base sm:text-lg md:text-xl font-bold leading-snug break-words tracking-tight">
+                  {activeViewNote.chatTitle}
+                </h2>
 
-                  <button
-                    onClick={() => setActiveViewNote(null)}
-                    className={`p-2 rounded-xl transition-all ${
-                      theme === 'dark' ? 'text-slate-400 hover:bg-white/10 hover:text-white' : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                    }`}
-                  >
-                    <X size={20} />
-                  </button>
+                {/* Sub-meta row: Word count / Q&A count + Gmail pill */}
+                <div className="flex items-center gap-2 flex-wrap pt-2 text-xs text-slate-400">
+                  <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono text-[11px] font-semibold ${
+                    theme === 'dark' ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20' : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  }`}>
+                    <MessageSquare size={11} className="shrink-0" />
+                    <span>{activeViewNote.questionCount || 1} {activeViewNote.questionCount === 1 ? 'Word' : 'Words'}</span>
+                  </div>
+
+                  {activeViewNote.gmail && (
+                    <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border font-mono text-[11px] max-w-full sm:max-w-none truncate ${
+                      theme === 'dark' ? 'bg-white/5 text-slate-300 border-white/10' : 'bg-slate-100 text-slate-600 border-slate-200'
+                    }`}>
+                      <Mail size={11} className="shrink-0 text-slate-400" />
+                      <span className="truncate">{activeViewNote.gmail}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Reader Body */}
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
                 
                 {/* Notes Section */}
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-400 flex items-center gap-1.5">
-                    <FileText size={14} />
+                    <FileText size={13} />
                     <span>Notes & Questions</span>
                   </h4>
-                  <div className={`p-4 rounded-2xl border text-sm leading-relaxed whitespace-pre-wrap ${
+                  <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words ${
                     theme === 'dark' ? 'bg-white/[0.02] border-white/5 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800'
                   }`}>
                     {activeViewNote.notes}
@@ -1912,21 +1956,21 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
                 {/* AI Response / Code Section */}
                 {activeViewNote.aiResponse && (
                   <div className="space-y-2">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <h4 className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                        <Terminal size={14} />
+                        <Terminal size={13} />
                         <span>AI Response & Solutions</span>
                       </h4>
                       <button
                         onClick={() => handleCopyAIResponse(activeViewNote.aiResponse || '')}
-                        className="flex items-center gap-1.5 px-3 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all active:scale-95"
+                        className="flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-bold transition-all active:scale-95"
                       >
-                        {copiedCodeId ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        {copiedCodeId ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                         <span>{copiedCodeId ? 'Copied!' : 'Copy Response'}</span>
                       </button>
                     </div>
 
-                    <div className="p-4 rounded-2xl border bg-slate-950 border-slate-800 text-emerald-300 font-mono text-xs leading-relaxed whitespace-pre-wrap overflow-x-auto shadow-inner">
+                    <div className="p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border bg-slate-950 border-slate-800 text-emerald-300 font-mono text-xs leading-relaxed whitespace-pre-wrap break-words overflow-x-auto shadow-inner">
                       {activeViewNote.aiResponse}
                     </div>
                   </div>
@@ -1934,24 +1978,147 @@ export function AINotesManager({ onBack, isEmbedded, onSwitchToGeneralNotes, onC
 
                 {/* Chat Links */}
                 {activeViewNote.chatLink && (
-                  <div className="pt-2">
+                  <div className="pt-1">
                     <a
                       href={activeViewNote.chatLink}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/25"
+                      className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-4 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-indigo-600/25 active:scale-95"
                     >
-                      <ExternalLink size={15} />
+                      <ExternalLink size={14} />
                       <span>Open Original AI Chat Session</span>
                     </a>
                   </div>
                 )}
 
                 {/* Timestamps */}
-                <div className="pt-4 border-t border-slate-200/50 dark:border-white/5 flex flex-wrap items-center justify-between text-[11px] text-slate-400">
+                <div className="pt-3.5 border-t border-slate-200/50 dark:border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] sm:text-[11px] text-slate-400">
                   <span>Created: {new Date(activeViewNote.createdAt).toLocaleString()}</span>
                   <span>Last Updated: {new Date(activeViewNote.updatedAt).toLocaleString()}</span>
                 </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= MODAL: CONFIRM DELETE CATEGORY ================= */}
+      <AnimatePresence>
+        {deletingCategory && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingCategory(null)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className={`relative w-full max-w-md p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl border flex flex-col space-y-4 z-10 ${
+                theme === 'dark' ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-red-500/10 text-red-500 shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base sm:text-lg">Delete Category</h3>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Are you sure you want to delete <span className="font-bold text-red-400">"{deletingCategory.name}"</span>?
+                  </p>
+                </div>
+              </div>
+
+              <p className={`text-xs leading-relaxed p-3 rounded-xl border ${
+                theme === 'dark' ? 'bg-white/5 border-white/5 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                Notes under this category will automatically be moved to the <span className="font-bold text-indigo-400">"General"</span> category.
+              </p>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  onClick={() => setDeletingCategory(null)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                    theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeleteCategory}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-600/30 active:scale-95 flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete Category</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ================= MODAL: CONFIRM DELETE AI NOTE ================= */}
+      <AnimatePresence>
+        {deletingNote && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setDeletingNote(null)}
+              className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className={`relative w-full max-w-md p-5 sm:p-6 rounded-2xl sm:rounded-3xl shadow-2xl border flex flex-col space-y-4 z-10 ${
+                theme === 'dark' ? 'bg-[#0f172a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-red-500/10 text-red-500 shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base sm:text-lg">Delete AI Chat Note</h3>
+                  <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Are you sure you want to delete this note?
+                  </p>
+                </div>
+              </div>
+
+              <div className={`p-3 rounded-xl border ${
+                theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-200'
+              }`}>
+                <p className="font-bold text-xs sm:text-sm truncate text-red-400">
+                  {deletingNote.chatTitle}
+                </p>
+                <p className={`text-[11px] mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                  This action cannot be undone.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-2">
+                <button
+                  onClick={() => setDeletingNote(null)}
+                  className={`px-4 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
+                    theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmDeleteNote}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all shadow-lg shadow-red-600/30 active:scale-95 flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  <span>Delete Note</span>
+                </button>
               </div>
             </motion.div>
           </div>
