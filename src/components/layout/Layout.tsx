@@ -16,8 +16,8 @@ interface LayoutProps {
   isSidebarOpen: boolean;
   onOpenSidebar: () => void;
   onCloseSidebar: () => void;
-  currentView?: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education';
-  onNavigate?: (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education', teamId?: string, chat?: boolean) => void;
+  currentView?: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes';
+  onNavigate?: (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => void;
   isNotesOpen?: boolean;
   onOpenNotes?: () => void;
   onCloseNotes?: () => void;
@@ -336,6 +336,7 @@ export function Layout({
       <GlobalNotesDrawer 
         isOpen={isNotesOpen} 
         onClose={onCloseNotes || (() => {})} 
+        onNavigate={onNavigate}
       />
 
       <NotificationDrawer 

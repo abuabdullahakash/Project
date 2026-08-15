@@ -102,6 +102,33 @@ export interface Subtask {
   completed: boolean;
 }
 
+export interface AICategory {
+  id: string;
+  userId: string;
+  name: string;
+  color?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AINote {
+  id: string;
+  userId: string;
+  chatTitle: string;
+  aiProvider: string;
+  category: string;
+  type: string;
+  gmail: string;
+  notes: string;
+  aiResponse?: string;
+  chatLink?: string;
+  questionCount?: number;
+  additionalLinks?: { title: string; url: string }[];
+  isPinned?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Todo {
   id: string;
   userId: string;

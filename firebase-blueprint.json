@@ -259,6 +259,52 @@
         "updatedAt": { "type": "string" }
       },
       "required": ["id", "courseId", "userId", "chatTitle", "categories", "chapter", "question", "gmail", "aiProvider", "createdAt", "updatedAt"]
+    },
+    "AINote": {
+      "title": "AINote",
+      "description": "A dedicated AI chat / prompt note in the global table vault",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "chatTitle": { "type": "string" },
+        "aiProvider": { "type": "string" },
+        "category": { "type": "string" },
+        "type": { "type": "string" },
+        "gmail": { "type": "string" },
+        "notes": { "type": "string" },
+        "aiResponse": { "type": "string" },
+        "chatLink": { "type": "string" },
+        "questionCount": { "type": "number" },
+        "additionalLinks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "title": { "type": "string" },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "isPinned": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "chatTitle", "aiProvider", "category", "type", "gmail", "notes", "createdAt", "updatedAt"]
+    },
+    "AICategory": {
+      "title": "AICategory",
+      "description": "A category for grouping AI notes",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "color": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -305,6 +351,14 @@
     "/educationalNotes/{noteId}": {
       "schema": { "$ref": "EducationalNote" },
       "description": "AI study notes per course"
+    },
+    "/aiNotes/{noteId}": {
+      "schema": { "$ref": "AINote" },
+      "description": "AI chat and prompt notes table vault"
+    },
+    "/aiCategories/{categoryId}": {
+      "schema": { "$ref": "AICategory" },
+      "description": "User created categories for AI notes"
     }
   }
 }

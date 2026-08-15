@@ -1,5 +1,8 @@
 {
   "name": "Developer Dashboard",
-  "description": "A clean, minimal, distraction-free project tracking tool for developers managing multiple client projects.",
-  "requestFramePermissions": []
+  "description": "A clean, minimal, distraction-free project tracking tool for developers managing multiple client projects, educational notes, and AI chat vaults.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

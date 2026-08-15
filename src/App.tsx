@@ -15,6 +15,7 @@ import { SmartProjectCreator } from './components/dashboard/SmartProjectCreator'
 import { NotifierSettings } from './components/admin/NotifierSettings';
 import { PasswordManager } from './components/passwords/PasswordManager';
 import { EducationManager } from './components/education/EducationManager';
+import { AINotesManager } from './components/notes/AINotesManager';
 import { useProjects } from './hooks/useProjects';
 import { useAuth } from './context/AuthContext';
 import { useTheme } from './context/ThemeContext';
@@ -26,7 +27,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education'>('dashboard');
+  const [currentView, setCurrentView] = useState<'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes'>('dashboard');
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
   const [chatOpenTrigger, setChatOpenTrigger] = useState<number>(0);
   const { addProject } = useProjects();
@@ -62,7 +63,7 @@ export default function App() {
     setIsModalOpen(false);
   };
 
-  const handleNavigate = (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education', teamId?: string, chat?: boolean) => {
+  const handleNavigate = (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => {
     setCurrentView(view);
     if (teamId) {
       setSelectedTeamId(teamId);
@@ -164,6 +165,8 @@ export default function App() {
             <TodoManager />
           ) : currentView === 'education' ? (
             <EducationManager />
+          ) : currentView === 'ai-notes' ? (
+            <AINotesManager onBack={() => setCurrentView('dashboard')} />
           ) : currentView === 'password-manager' ? (
             <PasswordManager />
           ) : currentView === 'templates' ? (

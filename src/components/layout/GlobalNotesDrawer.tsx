@@ -1,10 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { X, Plus, Trash2, Edit2, ExternalLink, Pin, Search, Tag, Palette, ChevronLeft, ChevronRight, Copy, Check, Settings } from 'lucide-react';
+import { X, Plus, Trash2, Edit2, ExternalLink, Pin, Search, Tag, Palette, ChevronLeft, ChevronRight, Copy, Check, Settings, Bot } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGlobalNotesContext } from '../../context/GlobalNotesContext';
 import { GlobalNote } from '../../types';
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock';
-
+import { useTheme } from '../../context/ThemeContext';
+import { AINotesManager } from '../notes/AINotesManager';
 
 const COLORS = [
   { id: 'default', class: 'bg-white/5 border-white/5 hover:border-white/10' },
@@ -15,18 +16,26 @@ const COLORS = [
   { id: 'purple', class: 'bg-purple-500/10 border-purple-500/30 hover:border-purple-500/50' }
 ];
 
-import { useTheme } from '../../context/ThemeContext';
-
 interface GlobalNotesDrawerProps {
   isOpen: boolean;
   onClose: () => void;
+  onNavigate?: (view: any) => void;
+  initialMode?: 'notes' | 'ai-vault';
 }
 
-export function GlobalNotesDrawer({ isOpen, onClose }: GlobalNotesDrawerProps) {
+export function GlobalNotesDrawer({ isOpen, onClose, onNavigate, initialMode = 'notes' }: GlobalNotesDrawerProps) {
   const { theme } = useTheme();
   const { notes, addNote, updateNote, deleteNote, categories, addCategory, editCategory, deleteCategory } = useGlobalNotesContext();
+  const [activeTab, setActiveTab] = useState<'notes' | 'ai-vault'>(initialMode);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Sync initialMode when drawer opens
+  useEffect(() => {
+    if (isOpen && initialMode) {
+      setActiveTab(initialMode);
+    }
+  }, [isOpen, initialMode]);
   
   // Category management state
   const [isManagingCategories, setIsManagingCategories] = useState(false);
@@ -203,65 +212,87 @@ export function GlobalNotesDrawer({ isOpen, onClose }: GlobalNotesDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className={`relative w-full md:w-1/2 md:max-w-[50vw] max-w-md h-full shadow-2xl flex flex-col border-l ${
+            className={`relative w-full ${
+              activeTab === 'ai-vault' 
+                ? 'md:w-[95vw] lg:w-[90vw] xl:w-[85vw] max-w-6xl' 
+                : 'md:w-1/2 md:max-w-[50vw] max-w-md'
+            } h-full shadow-2xl flex flex-col border-l transition-all duration-300 ${
               theme === 'dark' ? 'bg-[#0f172a] border-white/5' : 'bg-white border-slate-200'
             }`}
           >
-            <div className={`flex items-center justify-between px-6 py-5 border-b shrink-0 ${
-              theme === 'dark' ? 'border-white/5 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'
-            }`}>
-              <h2 className={`text-lg font-semibold tracking-tight items-center gap-2 flex ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-                {isManagingCategories ? 'Manage Categories' : 'Global Notes & Links'}
-              </h2>
-              <div className="flex items-center gap-2">
-                {isManagingCategories ? (
-                  <button 
-                    onClick={() => setIsManagingCategories(false)}
-                    className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                      theme === 'dark' ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
-                    }`}
-                  >
-                    Done
-                  </button>
-                ) : (
-                  <>
-                    {!isAdding && !editingId && (
+            {activeTab === 'ai-vault' ? (
+              <AINotesManager 
+                isEmbedded={true}
+                onSwitchToGeneralNotes={() => setActiveTab('notes')}
+                onClose={onClose}
+              />
+            ) : (
+              <>
+                <div className={`flex flex-wrap sm:flex-nowrap items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b shrink-0 gap-2 ${
+                  theme === 'dark' ? 'border-white/5 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'
+                }`}>
+                  <h2 className={`text-base sm:text-lg font-semibold tracking-tight items-center gap-2 flex ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+                    {isManagingCategories ? 'Manage Categories' : 'Global Notes & Links'}
+                  </h2>
+                  <div className="flex items-center gap-1.5 sm:gap-2">
+                    {isManagingCategories ? (
                       <button 
-                        onClick={() => {
-                          setIsAdding(true);
-                          setIsManagingCategories(false);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-lg transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:scale-105 active:scale-95"
-                        title="Add New Note / Link"
+                        onClick={() => setIsManagingCategories(false)}
+                        className={`px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                          theme === 'dark' ? 'bg-white/10 hover:bg-white/20 text-white' : 'bg-slate-200 hover:bg-slate-300 text-slate-800'
+                        }`}
                       >
-                        <Plus size={16} />
-                        <span>Add New</span>
+                        Done
                       </button>
-                    )}
-                    <button 
-                      onClick={() => setIsManagingCategories(true)}
-                      className={`p-2 rounded-lg transition-all ${
-                        theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
-                      }`}
-                      title="Manage Categories"
-                    >
-                      <Settings size={18} />
-                    </button>
-                    <button 
-                      onClick={onClose}
-                      className={`p-2 rounded-lg transition-all ${
-                        theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
-                      }`}
-                      title="Close"
-                    >
-                      <X size={18} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setActiveTab('ai-vault')}
+                          className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-bold uppercase tracking-wider rounded-lg transition-all shadow-[0_0_15px_rgba(99,102,241,0.35)] hover:scale-105 active:scale-95 cursor-pointer"
+                          title="Open AI Chat Notes Vault"
+                        >
+                          <Bot size={14} />
+                          <span className="hidden sm:inline">AI Notes Vault</span>
+                          <span className="sm:hidden">AI Vault</span>
+                        </button>
 
-            <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
+                        {!isAdding && !editingId && (
+                          <button 
+                            onClick={() => {
+                              setIsAdding(true);
+                              setIsManagingCategories(false);
+                            }}
+                            className="flex items-center gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs sm:text-sm font-medium rounded-lg transition-all shadow-[0_0_15px_rgba(37,99,235,0.3)] hover:scale-105 active:scale-95"
+                            title="Add New Note / Link"
+                          >
+                            <Plus size={15} />
+                            <span>Add</span>
+                          </button>
+                        )}
+                        <button 
+                          onClick={() => setIsManagingCategories(true)}
+                          className={`p-1.5 sm:p-2 rounded-lg transition-all ${
+                            theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                          }`}
+                          title="Manage Categories"
+                        >
+                          <Settings size={16} />
+                        </button>
+                        <button 
+                          onClick={onClose}
+                          className={`p-1.5 sm:p-2 rounded-lg transition-all ${
+                            theme === 'dark' ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-200'
+                          }`}
+                          title="Close"
+                        >
+                          <X size={16} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 scrollbar-thin">
               {isManagingCategories ? (
                 <div className="space-y-6">
                   {/* Add new category */}
@@ -697,13 +728,15 @@ export function GlobalNotesDrawer({ isOpen, onClose }: GlobalNotesDrawerProps) {
               </p>
             </div>
           )}
-          </div>
-              </>
-              )}
-            </div>
-          </motion.div>
-      </div>
+        </div>
+      </>
     )}
-  </AnimatePresence>
+  </div>
+</>
+)}
+</motion.div>
+</div>
+)}
+</AnimatePresence>
 );
 }
