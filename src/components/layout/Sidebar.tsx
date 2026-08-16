@@ -4,7 +4,7 @@ import {
   X, LayoutGrid, Users, Shield, BookOpen, LogOut, 
   LayoutDashboard, Settings, HelpCircle, Bell, Link as LinkIcon,
   CheckSquare, Briefcase, LayoutTemplate, Code2, KeyRound, GraduationCap,
-  User as UserIcon, ChevronsUpDown, ChevronRight, Sparkles, ExternalLink, Bot
+  User as UserIcon, ChevronsUpDown, ChevronRight, Sparkles, ExternalLink, Bot, Compass
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
@@ -15,8 +15,8 @@ import { SupportModal } from '../profile/SupportModal';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  currentView: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes';
-  onNavigate: (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => void;
+  currentView: 'home' | 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes';
+  onNavigate: (view: 'home' | 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => void;
   onOpenNotes: () => void;
 }
 
@@ -44,15 +44,16 @@ export function Sidebar({ isOpen, onClose, currentView, onNavigate, onOpenNotes 
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
+    { id: 'home', label: 'Workspace Hub', icon: LayoutDashboard },
+    { id: 'dashboard', label: 'Client Projects', icon: Briefcase },
+    { id: 'ai-notes', label: 'AI Chat Notes Vault', icon: Bot },
+    { id: 'education', label: 'Educational Notes', icon: GraduationCap },
     { id: 'personal-projects', label: 'Personal Workspace', icon: Code2 },
     { id: 'teams', label: 'Teams', icon: Users },
     { id: 'todos', label: 'To-Do List', icon: CheckSquare },
-    { id: 'education', label: 'Educational Notes', icon: GraduationCap },
-    { id: 'ai-notes', label: 'AI Chat Notes Vault', icon: Bot },
     { id: 'password-manager', label: 'Password Manager', icon: KeyRound },
     { id: 'templates', label: 'Elementor Templates', icon: LayoutTemplate },
-    { id: 'portfolio', label: 'View Portfolio', icon: Briefcase, adminOnly: true, action: () => {
+    { id: 'portfolio', label: 'View Portfolio', icon: ExternalLink, adminOnly: true, action: () => {
       window.history.pushState({}, '', '/portfolio');
       window.dispatchEvent(new PopStateEvent('popstate'));
     } },

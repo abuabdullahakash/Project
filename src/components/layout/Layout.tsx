@@ -16,8 +16,8 @@ interface LayoutProps {
   isSidebarOpen: boolean;
   onOpenSidebar: () => void;
   onCloseSidebar: () => void;
-  currentView?: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes';
-  onNavigate?: (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => void;
+  currentView?: 'home' | 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes';
+  onNavigate?: (view: 'home' | 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => void;
   isNotesOpen?: boolean;
   onOpenNotes?: () => void;
   onCloseNotes?: () => void;
@@ -29,7 +29,7 @@ export function Layout({
   isSidebarOpen,
   onOpenSidebar, 
   onCloseSidebar,
-  currentView = 'dashboard', 
+  currentView = 'home', 
   onNavigate,
   isNotesOpen = false,
   onOpenNotes,
@@ -203,7 +203,7 @@ export function Layout({
               
               <div 
                 className="flex items-center gap-3 cursor-pointer group"
-                onClick={() => onNavigate?.('dashboard')}
+                onClick={() => onNavigate?.('home')}
               >
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/20 group-hover:shadow-red-500/40 transition-all">
                   <LayoutDashboard size={16} className="text-white" />

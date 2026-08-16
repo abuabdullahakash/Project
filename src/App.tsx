@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Layout } from './components/layout/Layout';
+import { WorkspaceHub } from './components/dashboard/WorkspaceHub';
 import { Dashboard } from './components/dashboard/Dashboard';
 import { TeamDashboard } from './components/dashboard/TeamDashboard';
 import { ProjectFormModal } from './components/projects/ProjectFormModal';
@@ -27,7 +28,7 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isNotesOpen, setIsNotesOpen] = useState(false);
-  const [currentView, setCurrentView] = useState<'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes'>('dashboard');
+  const [currentView, setCurrentView] = useState<'home' | 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes'>('home');
   const [selectedTeamId, setSelectedTeamId] = useState<string | undefined>(undefined);
   const [chatOpenTrigger, setChatOpenTrigger] = useState<number>(0);
   const { addProject } = useProjects();
@@ -63,7 +64,7 @@ export default function App() {
     setIsModalOpen(false);
   };
 
-  const handleNavigate = (view: 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => {
+  const handleNavigate = (view: 'home' | 'dashboard' | 'team-dashboard' | 'admin' | 'teams' | 'todos' | 'templates' | 'personal-projects' | 'notifier-settings' | 'password-manager' | 'education' | 'ai-notes', teamId?: string, chat?: boolean) => {
     setCurrentView(view);
     if (teamId) {
       setSelectedTeamId(teamId);
@@ -138,6 +139,12 @@ export default function App() {
                 setCurrentPath('/');
               }}
             />
+          ) : currentView === 'home' ? (
+            <WorkspaceHub 
+              onNavigate={handleNavigate}
+              onNewProject={() => setIsModalOpen(true)}
+              onOpenNotes={() => setIsNotesOpen(true)}
+            />
           ) : currentView === 'dashboard' ? (
             <Dashboard 
               isSidebarOpen={isSidebarOpen} 
@@ -166,7 +173,7 @@ export default function App() {
           ) : currentView === 'education' ? (
             <EducationManager />
           ) : currentView === 'ai-notes' ? (
-            <AINotesManager onBack={() => setCurrentView('dashboard')} />
+            <AINotesManager onBack={() => setCurrentView('home')} />
           ) : currentView === 'password-manager' ? (
             <PasswordManager />
           ) : currentView === 'templates' ? (
