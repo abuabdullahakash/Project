@@ -22,6 +22,13 @@ export interface UserProfile {
   photoURL: string;
   role: UserRole;
   teamId?: string;
+  title?: string;
+  bio?: string;
+  phone?: string;
+  location?: string;
+  github?: string;
+  portfolioUrl?: string;
+  skills?: string[];
   createdAt: string;
   lastLoginAt: string;
 }

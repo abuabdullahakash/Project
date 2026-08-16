@@ -186,8 +186,8 @@ export function Layout({
           ? 'bg-red-950/40 border-red-900/50 shadow-[0_4px_30px_rgba(127,29,29,0.1)]' 
           : 'bg-white/80 border-slate-200 shadow-sm'
       }`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-14 sm:h-16">
             {/* Left side: Menu & Logo */}
             <div className="flex items-center gap-4">
               <button 
@@ -320,7 +320,7 @@ export function Layout({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 md:py-8 w-full">
         {children}
       </main>
 

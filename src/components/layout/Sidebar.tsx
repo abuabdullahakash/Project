@@ -413,7 +413,9 @@ export function Sidebar({ isOpen, onClose, currentView, onNavigate, onOpenNotes 
                   <p className={`text-sm font-bold truncate ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
                     {userProfile?.displayName || user?.displayName || 'User'}
                   </p>
-                  <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>{user?.email}</p>
+                  <p className={`text-[10px] truncate ${theme === 'dark' ? 'text-slate-400' : 'text-slate-500'}`}>
+                    {userProfile?.title || user?.email}
+                  </p>
                 </div>
                 <div className={`p-1.5 rounded-lg transition-transform ${
                   isProfileMenuOpen ? 'rotate-180 text-red-500' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'
