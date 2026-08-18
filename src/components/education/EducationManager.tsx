@@ -5,7 +5,7 @@ import {
   Clock, Settings, Trash2, Edit, ExternalLink, FileText, Check, ChevronLeft, ChevronRight,
   Brain, Timer, Sparkles, Mail, Layers, Activity, ChevronDown, CheckCircle, 
   X, Play, Pause, RotateCcw, Flame, Trophy, AlertTriangle, HelpCircle, 
-  ArrowRight, Globe, Info, Upload, Copy, Eye
+  ArrowRight, Globe, Info, Upload, Copy, Eye, ZoomIn, ZoomOut, Maximize2, Download
 } from 'lucide-react';
 import { collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocFromServer } from 'firebase/firestore';
 import { db, auth } from '../../lib/firebase';
@@ -78,6 +78,9 @@ interface EducationalNote {
   aiProvider: string; // "ChatGPT" | "Gemini" | "Google AI Studio" | "Claude" | "Qwen"
   chatLink?: string;
   additionalLinks?: { title: string; url: string }[];
+  questionImages?: string[];
+  questionImageUrl?: string;
+  solutionImages?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -362,6 +365,106 @@ export function EducationManager() {
   const [noteAdditionalLinks, setNoteAdditionalLinks] = useState<{ title: string; url: string }[]>([]);
   const [newLinkTitle, setNewLinkTitle] = useState('');
   const [newLinkUrl, setNewLinkUrl] = useState('');
+  const [noteQuestionImages, setNoteQuestionImages] = useState<string[]>([]);
+  const [isUploadingNoteImage, setIsUploadingNoteImage] = useState(false);
+
+  // Lightbox Modal for zooming in equation/question images
+  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+  const [lightboxImageTitle, setLightboxImageTitle] = useState<string>('');
+  const [lightboxZoom, setLightboxZoom] = useState<number>(1);
+
+  // Upload and attach image to Note form
+  const uploadAndAddNoteImage = async (file: File) => {
+    setIsUploadingNoteImage(true);
+    const toastId = toast.loading('সমীকরণ / প্রশ্নের ছবি আপলোড হচ্ছে...');
+    try {
+      const url = await uploadImageToImgBB(file);
+      if (url) {
+        setNoteQuestionImages(prev => [...prev, url]);
+        toast.success('সমীকরণের ছবি সফলভাবে যুক্ত হয়েছে!', { id: toastId });
+      } else {
+        // Fallback to local Base64
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          setNoteQuestionImages(prev => [...prev, base64data]);
+          toast.success('সমীকরণের ছবি যুক্ত হয়েছে (লোকাল স্টোরেজ)', { id: toastId });
+        };
+        reader.readAsDataURL(file);
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error('ছবি আপলোড ব্যর্থ হয়েছে', { id: toastId });
+    } finally {
+      setIsUploadingNoteImage(false);
+    }
+  };
+
+  const handleNoteImageFileInput = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type.startsWith('image/')) {
+        await uploadAndAddNoteImage(files[i]);
+      }
+    }
+    e.target.value = '';
+  };
+
+  const handleRemoveNoteImage = (index: number) => {
+    setNoteQuestionImages(prev => prev.filter((_, i) => i !== index));
+    toast.info('ছবি সরানো হয়েছে');
+  };
+
+  const handleNoteImageDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const files = e.dataTransfer?.files;
+    if (files && files.length > 0) {
+      for (let i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith('image/')) {
+          await uploadAndAddNoteImage(files[i]);
+        }
+      }
+    }
+  };
+
+  // Global paste handler when Note Modal is open (Ctrl + V for screenshots)
+  useEffect(() => {
+    if (!isNoteModalOpen) return;
+
+    const handleNoteModalGlobalPaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            await uploadAndAddNoteImage(file);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handleNoteModalGlobalPaste);
+    return () => {
+      window.removeEventListener('paste', handleNoteModalGlobalPaste);
+    };
+  }, [isNoteModalOpen]);
+
+  // Escape key handler to close lightbox
+  useEffect(() => {
+    if (!lightboxImageUrl) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxImageUrl(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImageUrl]);
 
   const handleAddAdditionalLink = () => {
     const trimmedTitle = newLinkTitle.trim();
@@ -669,8 +772,13 @@ export function EducationManager() {
     e.preventDefault();
     if (!db || !auth?.currentUser || !selectedCourse) return;
 
-    if (!noteChatTitle.trim() || !noteQuestion.trim() || !noteGmail.trim()) {
-      toast.error('Please fill in Chat Title, Question/Math Topic, and Gmail Account');
+    if (!noteChatTitle.trim() || !noteGmail.trim()) {
+      toast.error('Please fill in Chat Title and Gmail Account');
+      return;
+    }
+
+    if (!noteQuestion.trim() && noteQuestionImages.length === 0) {
+      toast.error('অনুগ্রহ করে প্রশ্নের বিবরণ লিখুন অথবা সমীকরণের ছবি/স্ক্রিনশট যুক্ত করুন');
       return;
     }
 
@@ -679,18 +787,22 @@ export function EducationManager() {
       return;
     }
 
+    const finalQuestion = noteQuestion.trim() || (noteQuestionImages.length > 0 ? '(সমীকরণ / প্রশ্নের ছবি সংযুক্ত)' : '');
+
     const noteData = {
       courseId: selectedCourse.id,
       userId: auth.currentUser.uid,
       chatTitle: noteChatTitle.trim(),
       categories: noteCategories,
       chapter: noteChapter || 'General',
-      question: noteQuestion.trim(),
+      question: finalQuestion,
       questionCount: Number(noteQuestionCount) || 1,
       gmail: noteGmail.trim(),
       aiProvider: noteAiProvider,
       chatLink: noteChatLink.trim() || '',
       additionalLinks: noteAdditionalLinks,
+      questionImages: noteQuestionImages,
+      questionImageUrl: noteQuestionImages[0] || '',
       updatedAt: new Date().toISOString()
     };
 
@@ -719,6 +831,7 @@ export function EducationManager() {
       setNoteAdditionalLinks([]);
       setNewLinkTitle('');
       setNewLinkUrl('');
+      setNoteQuestionImages([]);
       setEditingNote(null);
       setIsNoteModalOpen(false);
     } catch (err) {
@@ -738,6 +851,7 @@ export function EducationManager() {
     setNoteGmail(note.gmail);
     setNoteChatLink(note.chatLink || '');
     setNoteAdditionalLinks(note.additionalLinks || []);
+    setNoteQuestionImages(note.questionImages || (note.questionImageUrl ? [note.questionImageUrl] : []));
     setNewLinkTitle('');
     setNewLinkUrl('');
     setIsNoteModalOpen(true);
@@ -1543,14 +1657,43 @@ export function EducationManager() {
                           </div>
                         )}
 
-                        {/* Question snippet */}
-                        <p className={`text-xs line-clamp-2 p-2.5 rounded-xl border transition-colors ${
+                        {/* Question snippet & Math images */}
+                        <div className={`p-2.5 rounded-xl border transition-colors space-y-2 ${
                           theme === 'dark' 
                             ? 'bg-black/20 text-slate-300 border-white/5' 
                             : 'bg-slate-50 text-slate-800 border-slate-200/80 font-medium'
                         }`}>
-                          {note.question}
-                        </p>
+                          {((note.questionImages && note.questionImages.length > 0) || note.questionImageUrl) && (
+                            <div className="flex items-center gap-2 overflow-x-auto pb-1">
+                              {(note.questionImages || (note.questionImageUrl ? [note.questionImageUrl] : [])).map((imgUrl, i) => (
+                                <button
+                                  key={i}
+                                  type="button"
+                                  onClick={() => {
+                                    setLightboxImageUrl(imgUrl);
+                                    setLightboxImageTitle(`${note.chatTitle} - সমীকরণ #${i + 1}`);
+                                    setLightboxZoom(1);
+                                  }}
+                                  className="shrink-0 w-16 h-12 rounded-lg overflow-hidden border border-indigo-500/30 relative group shadow-xs cursor-pointer"
+                                  title="বড় করে সমীকরণ দেখুন"
+                                >
+                                  <img 
+                                    src={imgUrl} 
+                                    alt="Math equation" 
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                  <span className="absolute bottom-0.5 right-0.5 bg-black/75 text-[8px] font-bold text-white px-1 rounded">
+                                    #{i + 1}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                          <p className="text-xs line-clamp-2">
+                            {note.question}
+                          </p>
+                        </div>
 
                         {/* Action Toolbar */}
                         <div className="flex items-center justify-between pt-2 border-t border-slate-200/50 dark:border-white/5 text-xs">
@@ -1755,10 +1898,45 @@ export function EducationManager() {
                                 <span className="truncate">{note.gmail}</span>
                               </span>
                             </td>
-                            <td className={`py-4 px-4 max-w-xs truncate font-medium ${
+                            <td className={`py-4 px-4 max-w-xs font-medium ${
                               theme === 'dark' ? 'text-slate-300' : 'text-slate-700'
-                            }`} title={note.question}>
-                              {note.question}
+                            }`}>
+                              <div className="flex items-center gap-2">
+                                {((note.questionImages && note.questionImages.length > 0) || note.questionImageUrl) && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const imgUrl = note.questionImages?.[0] || note.questionImageUrl || '';
+                                      setLightboxImageUrl(imgUrl);
+                                      setLightboxImageTitle(`${note.chatTitle} - সমীকরণ ছবি`);
+                                      setLightboxZoom(1);
+                                    }}
+                                    className="group/img relative shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-indigo-500/30 hover:border-indigo-500 transition-all hover:scale-110 shadow-xs cursor-pointer bg-black/30"
+                                    title="বড় করে সমীকরণের ছবি দেখুন"
+                                  >
+                                    <img 
+                                      src={note.questionImages?.[0] || note.questionImageUrl} 
+                                      alt="Math equation"
+                                      className="w-full h-full object-cover"
+                                      referrerPolicy="no-referrer"
+                                    />
+                                    <div className="absolute inset-0 bg-indigo-950/60 opacity-0 group-hover/img:opacity-100 flex items-center justify-center text-white transition-opacity">
+                                      <Eye size={11} />
+                                    </div>
+                                  </button>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                  <span className="truncate block" title={note.question}>
+                                    {note.question}
+                                  </span>
+                                  {note.questionImages && note.questionImages.length > 1 && (
+                                    <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold block">
+                                      +{note.questionImages.length - 1} আরও ছবি
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                             <td className="py-4 px-5 text-right">
                               <div className="flex items-center justify-end gap-1.5">
@@ -2063,289 +2241,426 @@ export function EducationManager() {
       {/* ==================== CREATE/EDIT NOTE FORM MODAL ==================== */}
       <AnimatePresence>
         {isNoteModalOpen && selectedCourse && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 overflow-y-auto p-2 sm:p-4 md:p-6 flex items-center justify-center">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-2xl rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
-                theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className={`w-full max-w-3xl max-h-[94vh] sm:max-h-[90vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${
+                theme === 'dark' ? 'bg-[#0f172a] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  setEditingNote(null);
-                  setIsNoteModalOpen(false);
-                }}
-                className={`absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-500/10 transition-all ${
-                  theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <X size={18} />
-              </button>
-
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-b border-slate-200/50 dark:border-white/5 pb-3">
-                <Brain className="text-indigo-500 animate-pulse" size={20} />
-                <span>{editingNote ? 'Edit AI Chat Note' : 'Add New Study Note'}</span>
-                <span className="text-xs font-normal text-slate-400 block ml-2">
-                  (for {selectedCourse.name})
-                </span>
-              </h2>
-
-              <form onSubmit={handleNoteSubmit} className="space-y-5">
-                
-                {/* Row 1: Chat Title & AI Provider */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Brain size={13} className="text-indigo-400" />
-                      <span>Ai Chat Title</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Calculus Limits"
-                      value={noteChatTitle}
-                      onChange={(e) => setNoteChatTitle(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/20 dark:placeholder:text-slate-500/15 font-medium ${
-                        theme === 'dark' 
-                          ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
-                          : 'bg-slate-50/50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
-                      }`}
-                    />
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-3.5 sm:px-6 py-3 sm:py-4 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+                <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1 mr-2">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-indigo-600/10 text-indigo-500 flex items-center justify-center shrink-0 border border-indigo-500/20">
+                    <Brain size={18} />
                   </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Sparkles size={13} className="text-indigo-400" />
-                      <span>AI Provider Selection</span>
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={noteAiProvider}
-                        onChange={(e) => setNoteAiProvider(e.target.value)}
-                        className={`w-full appearance-none pl-4 pr-10 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium cursor-pointer ${
-                          theme === 'dark' 
-                            ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
-                            : 'bg-slate-50/50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
-                        }`}
-                      >
-                        {AI_PROVIDERS.map(p => (
-                          <option key={p} value={p}>{p}</option>
-                        ))}
-                      </select>
-                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 2: Chapter Selection & settings & Note categories */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className={`p-3.5 rounded-2xl border transition-all ${
-                    theme === 'dark' 
-                      ? 'bg-gradient-to-r from-indigo-950/30 via-slate-900/40 to-indigo-950/20 border-indigo-500/20 shadow-inner' 
-                      : 'bg-gradient-to-r from-indigo-50/70 via-slate-50/50 to-indigo-50/40 border-indigo-200/80 shadow-xs'
-                  }`}>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-[11px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 flex items-center gap-1.5">
-                        <Layers size={14} className="text-indigo-500 animate-pulse" />
-                        <span>SELECT CHAPTER / (অধ্যায়)</span>
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setTempChapters([...(selectedCourse.chapters || [])]);
-                          setIsChaptersModalOpen(true);
-                        }}
-                        className="text-xs text-white bg-indigo-600 hover:bg-indigo-500 font-bold px-3 py-1 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20 cursor-pointer active:scale-95"
-                        title="Manage Chapters list"
-                      >
-                        <Settings size={12} />
-                        <span>Add/Edit Chapters</span>
-                      </button>
-                    </div>
-
-                    <div className="relative">
-                      <select
-                        value={noteChapter}
-                        onChange={(e) => setNoteChapter(e.target.value)}
-                        className={`w-full px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/40 cursor-pointer appearance-none ${
-                          theme === 'dark' 
-                            ? 'bg-[#111827] border-indigo-500/30 text-slate-100 focus:border-indigo-500' 
-                            : 'bg-white border-indigo-200 text-slate-800 focus:border-indigo-500 shadow-sm'
-                        }`}
-                      >
-                        {(selectedCourse.chapters || []).length === 0 ? (
-                          <option value="General">General (No chapters created yet)</option>
-                        ) : (
-                          (selectedCourse.chapters || []).map((ch, i) => (
-                            <option key={i} value={ch}>{ch}</option>
-                          ))
-                        )}
-                      </select>
-                      <ChevronDown size={16} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-indigo-400 pointer-events-none" />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Activity size={13} className="text-indigo-400" />
-                      <span>Syllabus / Notes / Suggestions Details</span>
-                    </label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {CATEGORY_OPTIONS.map((cat) => {
-                        const isSelected = noteCategories.includes(cat);
-                        return (
-                          <button
-                            key={cat}
-                            type="button"
-                            onClick={() => handleCategoryCheckboxChange(cat)}
-                            className={`py-3 px-1.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${
-                              isSelected
-                                ? theme === 'dark' 
-                                  ? 'bg-indigo-500/20 border-indigo-500 text-indigo-400 shadow-[0_2px_10px_rgba(99,102,241,0.15)]'
-                                  : 'bg-indigo-50 border-indigo-500 text-indigo-600 shadow-[0_2px_10px_rgba(99,102,241,0.08)]'
-                                : theme === 'dark'
-                                  ? 'bg-black/30 border-white/5 text-slate-400 hover:text-slate-300 hover:bg-white/5'
-                                  : 'bg-slate-50/50 border-slate-200 text-slate-600 hover:text-slate-800 hover:bg-slate-100'
-                            }`}
-                          >
-                            <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-all shrink-0 ${
-                              isSelected
-                                ? 'bg-indigo-600 border-indigo-500 text-white'
-                                : theme === 'dark' ? 'border-white/10' : 'border-slate-300'
-                            }`}>
-                              {isSelected && <Check size={10} strokeWidth={3} />}
-                            </div>
-                            <span className="truncate">{cat}</span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Row 3: Gmail Account & Chat Link */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Mail size={13} className="text-indigo-400" />
-                      <span>Gmail account Used</span>
-                    </label>
-                    <input
-                      type="email"
-                      required
-                      placeholder="e.g. user@gmail.com"
-                      value={noteGmail}
-                      onChange={(e) => setNoteGmail(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/20 dark:placeholder:text-slate-500/15 font-medium ${
-                        theme === 'dark' 
-                          ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
-                          : 'bg-slate-50/50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
-                      }`}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Globe size={13} className="text-indigo-400" />
-                      <span>AI Chat Link (Optional)</span>
-                    </label>
-                    <input
-                      type="url"
-                      placeholder="e.g. https://chatgpt.com/..."
-                      value={noteChatLink}
-                      onChange={(e) => setNoteChatLink(e.target.value)}
-                      className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/20 dark:placeholder:text-slate-500/15 font-medium ${
-                        theme === 'dark' 
-                          ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
-                          : 'bg-slate-50/50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
-                      }`}
-                    />
-                  </div>
-                </div>
-
-                {/* Row 4: Question / Math Description & Question Count */}
-                <div className="space-y-1.5">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-0.5">
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <FileText size={13} className="text-indigo-400" />
-                      <span>Question / Solving details</span>
-                    </label>
-
-                    {/* Question Count Number Field */}
-                    <div className="flex items-center gap-2 bg-indigo-500/10 dark:bg-indigo-500/15 border border-indigo-500/25 px-3 py-1 rounded-xl shrink-0">
-                      <HelpCircle size={13} className="text-indigo-500" />
-                      <span className="text-[11px] font-bold text-indigo-600 dark:text-indigo-300">
-                        প্রশ্নের সংখ্যা (Count):
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-sm sm:text-base md:text-lg font-bold leading-tight truncate">
+                      {editingNote ? 'Edit AI Chat Note' : 'Add New Study Note'}
+                    </h2>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] sm:text-[11px] text-slate-400 font-medium shrink-0">Course:</span>
+                      <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 truncate">
+                        {selectedCourse.name}
                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingNote(null);
+                    setIsNoteModalOpen(false);
+                  }}
+                  className={`p-1.5 sm:p-2 rounded-xl transition-all cursor-pointer shrink-0 ${
+                    theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Scrollable Form Body */}
+              <form onSubmit={handleNoteSubmit} className="flex-1 overflow-y-auto px-3.5 sm:px-6 py-4 sm:py-5 space-y-4 sm:space-y-5">
+                
+                {/* 1. Basic Info Section */}
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* Chat Title */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Brain size={13} className="text-indigo-400 shrink-0" />
+                        <span>AI Chat Title *</span>
+                      </label>
                       <input
-                        type="number"
-                        min={1}
-                        max={999}
+                        type="text"
                         required
-                        value={noteQuestionCount}
-                        onChange={(e) => setNoteQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
-                        className={`w-16 px-2 py-0.5 rounded-lg border text-xs font-extrabold text-center focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${
-                          theme === 'dark'
-                            ? 'bg-black/50 border-indigo-500/40 text-white'
-                            : 'bg-white border-indigo-300 text-indigo-950'
+                        placeholder="e.g. Legendre Polynomial Orthogonality"
+                        value={noteChatTitle}
+                        onChange={(e) => setNoteChatTitle(e.target.value)}
+                        className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/40 font-medium ${
+                          theme === 'dark' 
+                            ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
+                            : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
                         }`}
                       />
-                      <span className="text-[11px] font-bold text-indigo-500">টি</span>
+                    </div>
+
+                    {/* AI Provider */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Sparkles size={13} className="text-indigo-400 shrink-0" />
+                        <span>AI Provider *</span>
+                      </label>
+                      <div className="relative">
+                        <select
+                          value={noteAiProvider}
+                          onChange={(e) => setNoteAiProvider(e.target.value)}
+                          className={`w-full appearance-none pl-3 pr-9 py-2 sm:pl-3.5 sm:pr-10 sm:py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 font-medium cursor-pointer ${
+                            theme === 'dark' 
+                              ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
+                              : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
+                          }`}
+                        >
+                          {AI_PROVIDERS.map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
                     </div>
                   </div>
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* Gmail Account */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Mail size={13} className="text-indigo-400 shrink-0" />
+                        <span>Gmail Account Used *</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="e.g. user@gmail.com"
+                        value={noteGmail}
+                        onChange={(e) => setNoteGmail(e.target.value)}
+                        className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/40 font-medium ${
+                          theme === 'dark' 
+                            ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
+                            : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
+                        }`}
+                      />
+                    </div>
+
+                    {/* AI Chat Link */}
+                    <div className="space-y-1">
+                      <label className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Globe size={13} className="text-indigo-400 shrink-0" />
+                        <span>AI Chat Link <span className="text-[10px] text-slate-500 font-normal lowercase">(optional)</span></span>
+                      </label>
+                      <input
+                        type="url"
+                        placeholder="e.g. https://chatgpt.com/share/..."
+                        value={noteChatLink}
+                        onChange={(e) => setNoteChatLink(e.target.value)}
+                        className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/40 font-medium ${
+                          theme === 'dark' 
+                            ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
+                            : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Chapter & Category Classification */}
+                <div className={`p-3 sm:p-4 rounded-xl border transition-all space-y-3 sm:space-y-4 ${
+                  theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50/70 border-slate-200/80'
+                }`}>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                    {/* Chapter Select */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <Layers size={13} className="text-indigo-400 shrink-0" />
+                          <span>Select Chapter / অধ্যায়</span>
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTempChapters([...(selectedCourse.chapters || [])]);
+                            setIsChaptersModalOpen(true);
+                          }}
+                          className="text-[10px] sm:text-[11px] text-indigo-400 hover:text-indigo-300 font-bold flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 px-2 py-0.5 rounded-lg border border-indigo-500/20 transition-all shrink-0 cursor-pointer"
+                        >
+                          <Settings size={11} />
+                          <span>অধ্যায় এডিট</span>
+                        </button>
+                      </div>
+
+                      <div className="relative">
+                        <select
+                          value={noteChapter}
+                          onChange={(e) => setNoteChapter(e.target.value)}
+                          className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border text-xs sm:text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer appearance-none ${
+                            theme === 'dark' 
+                              ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500' 
+                              : 'bg-white border-slate-200 text-slate-800 focus:border-indigo-500 shadow-xs'
+                          }`}
+                        >
+                          {(selectedCourse.chapters || []).length === 0 ? (
+                            <option value="General">General (No chapters yet)</option>
+                          ) : (
+                            (selectedCourse.chapters || []).map((ch, i) => (
+                              <option key={i} value={ch}>{ch}</option>
+                            ))
+                          )}
+                        </select>
+                        <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                      </div>
+                    </div>
+
+                    {/* Content Tags (No truncation on mobile, wraps naturally) */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                        <Activity size={13} className="text-indigo-400 shrink-0" />
+                        <span>Content Tags</span>
+                      </label>
+                      <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                        {CATEGORY_OPTIONS.map((cat) => {
+                          const isSelected = noteCategories.includes(cat);
+                          return (
+                            <button
+                              key={cat}
+                              type="button"
+                              onClick={() => handleCategoryCheckboxChange(cat)}
+                              className={`py-1.5 px-2.5 sm:px-3 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap ${
+                                isSelected
+                                  ? theme === 'dark' 
+                                    ? 'bg-indigo-500/20 border-indigo-500/60 text-indigo-300 shadow-xs'
+                                    : 'bg-indigo-50 border-indigo-400 text-indigo-700 shadow-xs'
+                                  : theme === 'dark'
+                                    ? 'bg-black/20 border-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                                    : 'bg-white border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                              }`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded flex items-center justify-center border transition-all shrink-0 ${
+                                isSelected
+                                  ? 'bg-indigo-600 border-indigo-500 text-white'
+                                  : theme === 'dark' ? 'border-white/20' : 'border-slate-300'
+                              }`}>
+                                {isSelected && <Check size={10} strokeWidth={3} />}
+                              </div>
+                              <span>{cat}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Question Details & Count */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <FileText size={13} className="text-indigo-400 shrink-0" />
+                      <span>Question / Topic Details</span>
+                    </label>
+
+                    {/* Question Count */}
+                    <div className="flex items-center gap-1 text-xs font-semibold text-slate-400">
+                      <span className="text-[10px] sm:text-xs">প্রশ্নের সংখ্যা:</span>
+                      <div className="flex items-center border rounded-lg px-2 py-0.5 gap-1 bg-black/10 dark:bg-black/30 border-slate-300 dark:border-white/10">
+                        <input
+                          type="number"
+                          min={1}
+                          max={999}
+                          value={noteQuestionCount}
+                          onChange={(e) => setNoteQuestionCount(Math.max(1, parseInt(e.target.value) || 1))}
+                          className="w-8 bg-transparent text-center text-xs font-bold focus:outline-none text-indigo-600 dark:text-indigo-400"
+                        />
+                        <span className="text-[10px] text-slate-400">টি</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {noteQuestionImages.length > 0 && (
+                    <div className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
+                      <span>✓ সমীকরণ/ছবির ফাইল যুক্ত রয়েছে (টেক্সট ফাঁকা রাখলেও চলবে)</span>
+                    </div>
+                  )}
+
                   <textarea
-                    required
-                    rows={4}
-                    placeholder="Type or paste the question/solving details here..."
+                    required={noteQuestionImages.length === 0}
+                    rows={3}
+                    placeholder="প্রশ্নের বিস্তারিত বা বিবরণ লিখুন... সমীকরণ পেস্ট করতে নিচের বক্সে ছবি দিন বা পেস্ট করুন"
                     value={noteQuestion}
                     onChange={(e) => setNoteQuestion(e.target.value)}
-                    className={`w-full px-4 py-3 rounded-xl border text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/20 dark:placeholder:text-slate-500/15 font-medium ${
+                    className={`w-full px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl border text-xs sm:text-sm transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 placeholder:text-slate-400/40 font-medium leading-relaxed ${
                       theme === 'dark' 
-                        ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
-                        : 'bg-slate-50/50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
+                        ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500 focus:bg-black/40' 
+                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:border-indigo-500 focus:bg-white'
                     }`}
                   />
                 </div>
 
-                {/* Additional Resource Links Section */}
-                <div className={`p-4 rounded-2xl border space-y-3 transition-all ${
-                  theme === 'dark' 
-                    ? 'bg-black/20 border-white/5' 
-                    : 'bg-slate-50/60 border-slate-200'
-                }`}>
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Globe size={13} className="text-indigo-400" />
-                      <span>Additional Resource Links</span>
-                      <span className="text-[10px] text-slate-500 font-normal lowercase">(optional)</span>
-                    </label>
-                    {noteAdditionalLinks.length > 0 && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                        {noteAdditionalLinks.length} {noteAdditionalLinks.length === 1 ? 'Link' : 'Links'} Added
+                {/* 4. Math Equation & Screenshots (Upload, Drag-Drop, Ctrl+V) */}
+                <div 
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={handleNoteImageDrop}
+                  className={`p-3 sm:p-4 rounded-xl border transition-all space-y-2.5 ${
+                    theme === 'dark' 
+                      ? 'bg-indigo-950/20 border-indigo-500/20' 
+                      : 'bg-indigo-50/40 border-indigo-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <ImageIcon size={14} className="text-indigo-400 shrink-0" />
+                      <span className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-200 truncate">
+                        সমীকরণ ও প্রশ্নের ছবি (Math Images)
+                      </span>
+                    </div>
+
+                    {noteQuestionImages.length > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                        {noteQuestionImages.length}টি ছবি যুক্ত
                       </span>
                     )}
                   </div>
 
-                  {/* Inputs to add new link */}
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-2">
+                  {/* Responsive Hint */}
+                  <div className="flex items-center gap-1.5 text-[10px] text-indigo-300/90 bg-indigo-500/10 px-2.5 py-1.5 rounded-lg border border-indigo-500/20">
+                    <Sparkles size={12} className="text-indigo-400 shrink-0" />
+                    <span>
+                      <span className="hidden sm:inline">💡 যেকোনো স্ক্রিনশট কপি করে সরাসরি <strong>Ctrl + V</strong> চাপলে স্বয়ংক্রিয় যুক্ত হবে।</span>
+                      <span className="sm:hidden">💡 গ্যালারি/ক্যামেরা থেকে ছবি সিলেক্ট করুন বা কপি করা ছবি পেস্ট করুন।</span>
+                    </span>
+                  </div>
+
+                  {/* Upload Trigger */}
+                  <div className="flex items-center gap-2">
+                    <label className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border border-dashed cursor-pointer transition-all ${
+                      isUploadingNoteImage 
+                        ? 'opacity-50 pointer-events-none' 
+                        : theme === 'dark'
+                          ? 'border-indigo-500/40 hover:border-indigo-400 bg-black/25 hover:bg-black/40 text-slate-200'
+                          : 'border-indigo-300 hover:border-indigo-500 bg-white hover:bg-indigo-50/50 text-slate-700'
+                    }`}>
+                      <Upload size={15} className="text-indigo-400 shrink-0" />
+                      <span className="text-xs font-semibold">
+                        ছবি আপলোড করতে ট্যাপ করুন
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handleNoteImageFileInput}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {isUploadingNoteImage && (
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-indigo-400 shrink-0 animate-pulse">
+                        <Activity className="animate-spin" size={14} />
+                        <span>আপলোড...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Attached Images Grid */}
+                  {noteQuestionImages.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 pt-1">
+                      {noteQuestionImages.map((imgUrl, index) => (
+                        <div 
+                          key={index}
+                          className="relative group rounded-xl overflow-hidden border border-indigo-500/30 aspect-video bg-black/50 shadow-xs"
+                        >
+                          <img 
+                            src={imgUrl} 
+                            alt={`Math Screenshot ${index + 1}`}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                          
+                          <span className="absolute bottom-1 left-1 bg-black/80 text-white text-[9px] font-bold px-1.5 py-0.5 rounded backdrop-blur-xs">
+                            #{index + 1}
+                          </span>
+
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLightboxImageUrl(imgUrl);
+                                setLightboxImageTitle(`সমীকরণ #${index + 1}`);
+                                setLightboxZoom(1);
+                              }}
+                              className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
+                              title="Zoom"
+                            >
+                              <Eye size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveNoteImage(index)}
+                              className="p-1.5 rounded-lg bg-red-500/80 hover:bg-red-500 text-white transition-all cursor-pointer"
+                              title="Delete"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+
+                          {/* Mobile-accessible delete button in corner */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveNoteImage(index)}
+                            className="sm:hidden absolute top-1 right-1 p-1 rounded-md bg-black/70 text-red-400 hover:text-white"
+                          >
+                            <Trash2 size={11} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. Additional Resource Links */}
+                <div className={`p-3 sm:p-4 rounded-xl border space-y-2.5 transition-all ${
+                  theme === 'dark' ? 'bg-white/[0.02] border-white/5' : 'bg-slate-50/70 border-slate-200/80'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                      <Globe size={13} className="text-indigo-400 shrink-0" />
+                      <span>Additional Resource Links <span className="text-[10px] text-slate-500 font-normal lowercase">(ঐচ্ছিক)</span></span>
+                    </label>
+                    {noteAdditionalLinks.length > 0 && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        {noteAdditionalLinks.length} Links
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
                     <input
                       type="text"
-                      placeholder="Link Title (e.g. Lecture Slides, Solution Drive)"
+                      placeholder="Title (e.g. Slides, Solution Drive)"
                       value={newLinkTitle}
                       onChange={(e) => setNewLinkTitle(e.target.value)}
-                      className={`sm:col-span-5 px-3.5 py-2 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
+                      className={`sm:w-2/5 px-3 py-2 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
                         theme === 'dark' 
-                          ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500' 
+                          ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500' 
                           : 'bg-white border-slate-200 text-slate-800 focus:border-indigo-500'
                       }`}
                     />
                     <input
                       type="url"
-                      placeholder="Link URL (e.g. https://...)"
+                      placeholder="URL (e.g. https://...)"
                       value={newLinkUrl}
                       onChange={(e) => setNewLinkUrl(e.target.value)}
                       onKeyDown={(e) => {
@@ -2354,43 +2669,41 @@ export function EducationManager() {
                           handleAddAdditionalLink();
                         }
                       }}
-                      className={`sm:col-span-5 px-3.5 py-2 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
+                      className={`flex-1 px-3 py-2 rounded-xl border text-xs transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/30 ${
                         theme === 'dark' 
-                          ? 'bg-black/30 border-white/5 text-slate-100 focus:border-indigo-500' 
+                          ? 'bg-black/30 border-white/10 text-slate-100 focus:border-indigo-500' 
                           : 'bg-white border-slate-200 text-slate-800 focus:border-indigo-500'
                       }`}
                     />
                     <button
                       type="button"
                       onClick={handleAddAdditionalLink}
-                      className="sm:col-span-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1 shadow-md shadow-indigo-600/15 cursor-pointer active:scale-95"
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0"
                     >
                       <Plus size={14} />
                       <span>Add</span>
                     </button>
                   </div>
 
-                  {/* Display added links */}
                   {noteAdditionalLinks.length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-1 max-h-32 overflow-y-auto">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {noteAdditionalLinks.map((link, idx) => (
                         <div
                           key={idx}
-                          className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all ${
                             theme === 'dark'
                               ? 'bg-indigo-500/10 border-indigo-500/25 text-indigo-300'
                               : 'bg-indigo-50 border-indigo-200 text-indigo-700'
                           }`}
                         >
-                          <Globe size={12} className="text-indigo-500 shrink-0" />
-                          <span className="font-bold truncate max-w-[160px]" title={link.title}>{link.title}</span>
+                          <Globe size={11} className="text-indigo-400 shrink-0" />
+                          <span className="font-bold truncate max-w-[140px]" title={link.title}>{link.title}</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveAdditionalLink(idx)}
                             className="text-slate-400 hover:text-red-400 p-0.5 rounded transition-colors cursor-pointer"
-                            title="Remove link"
                           >
-                            <X size={12} />
+                            <X size={11} />
                           </button>
                         </div>
                       ))}
@@ -2398,15 +2711,15 @@ export function EducationManager() {
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex justify-end gap-3 pt-5 border-t border-slate-200/50 dark:border-white/5">
+                {/* Sticky Action Footer */}
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200/80 dark:border-white/10">
                   <button
                     type="button"
                     onClick={() => {
                       setEditingNote(null);
                       setIsNoteModalOpen(false);
                     }}
-                    className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all hover:scale-102 active:scale-98 ${
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                       theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                     }`}
                   >
@@ -2414,7 +2727,7 @@ export function EducationManager() {
                   </button>
                   <button
                     type="submit"
-                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-6 py-2.5 rounded-xl transition-all shadow-lg shadow-indigo-600/10 active:scale-98 hover:scale-102"
+                    className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-5 sm:px-6 py-2 rounded-xl transition-all shadow-md shadow-indigo-600/20 active:scale-98 cursor-pointer"
                   >
                     {editingNote ? 'Save Updates' : 'Add Note'}
                   </button>
@@ -2529,31 +2842,20 @@ export function EducationManager() {
       {/* ==================== VIEW NOTE DETAILS MODAL ==================== */}
       <AnimatePresence>
         {isViewNoteModalOpen && activeViewNote && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-start justify-center pt-14 sm:pt-8 pb-12">
+          <div className="fixed inset-0 bg-black/75 backdrop-blur-md z-50 overflow-y-auto p-3 sm:p-4 md:p-6 flex items-center justify-center">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className={`w-full max-w-xl rounded-2xl border p-4 sm:p-6 my-auto shadow-2xl relative ${
-                theme === 'dark' ? 'bg-[#111827] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 10 }}
+              transition={{ duration: 0.15 }}
+              className={`w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border shadow-2xl overflow-hidden ${
+                theme === 'dark' ? 'bg-[#0f172a] border-white/10 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
               }`}
             >
-              {/* Close Button */}
-              <button
-                onClick={() => {
-                  setActiveViewNote(null);
-                  setIsViewNoteModalOpen(false);
-                }}
-                className={`absolute top-4 right-4 p-1.5 rounded-full hover:bg-slate-500/10 transition-all ${
-                  theme === 'dark' ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'
-                }`}
-              >
-                <X size={18} />
-              </button>
-
-              <div className="mb-4">
-                <div className="flex items-center gap-2 mb-1.5">
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-200/80 dark:border-white/10 shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
                     activeViewNote.aiProvider === 'ChatGPT' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20' :
                     activeViewNote.aiProvider === 'Gemini' ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20' :
                     activeViewNote.aiProvider === 'Google AI Studio' ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20' :
@@ -2562,67 +2864,127 @@ export function EducationManager() {
                   }`}>
                     {activeViewNote.aiProvider}
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
+                  <span className={`text-xs px-2.5 py-1 rounded-lg font-bold border ${
                     theme === 'dark' ? 'bg-white/5 text-slate-300 border-white/10' : 'bg-slate-100 text-slate-700 border-slate-200'
                   }`}>
                     {activeViewNote.chapter}
                   </span>
-                  <span className={`text-[10px] px-2 py-0.5 rounded font-bold border ${
-                    theme === 'dark'
-                      ? 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20'
-                      : 'bg-indigo-50 text-indigo-700 border-indigo-200'
-                  }`}>
+                  <span className="text-xs px-2.5 py-1 rounded-lg font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                     {activeViewNote.questionCount || 1}টি প্রশ্ন
                   </span>
                 </div>
-                <h2 className={`text-xl font-extrabold tracking-tight ${
-                  theme === 'dark' ? 'text-slate-100' : 'text-slate-900'
-                }`}>{activeViewNote.chatTitle}</h2>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveViewNote(null);
+                    setIsViewNoteModalOpen(false);
+                  }}
+                  className={`p-2 rounded-xl transition-all cursor-pointer ${
+                    theme === 'dark' ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              <div className="space-y-4">
-                
-                {/* Categories */}
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-5 space-y-4">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Type Categories</span>
-                  <div className="flex gap-1.5 flex-wrap">
-                    {activeViewNote.categories.map((cat, i) => (
-                      <span 
-                        key={i} 
-                        className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20"
-                      >
-                        {cat}
-                      </span>
-                    ))}
-                  </div>
+                  <h2 className={`text-lg sm:text-xl font-extrabold tracking-tight mb-2 ${
+                    theme === 'dark' ? 'text-slate-100' : 'text-slate-900'
+                  }`}>{activeViewNote.chatTitle}</h2>
+
+                  {/* Categories */}
+                  {activeViewNote.categories.length > 0 && (
+                    <div className="flex gap-1.5 flex-wrap">
+                      {activeViewNote.categories.map((cat, i) => (
+                        <span 
+                          key={i} 
+                          className="px-2.5 py-0.5 rounded-md text-[11px] font-bold uppercase tracking-wider bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20"
+                        >
+                          {cat}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 {/* Gmail details */}
-                <div className={`flex items-center gap-2 p-3 rounded-xl border ${
-                  theme === 'dark' ? 'bg-black/20 border-white/5 text-slate-200' : 'bg-indigo-50/60 border-indigo-100 text-slate-900'
+                <div className={`flex items-center gap-2.5 p-3 rounded-xl border ${
+                  theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-900'
                 }`}>
-                  <Mail size={16} className="text-indigo-500 dark:text-slate-400 shrink-0" />
-                  <div>
-                    <span className="text-[9px] text-slate-500 dark:text-slate-400 block font-bold uppercase">Associated Gmail</span>
-                    <span className="text-xs font-mono font-semibold">{activeViewNote.gmail}</span>
+                  <Mail size={16} className="text-indigo-400 shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-[10px] text-slate-400 block font-bold uppercase">Associated Account</span>
+                    <span className="text-xs font-mono font-semibold truncate block">{activeViewNote.gmail}</span>
                   </div>
                 </div>
 
                 {/* Question Area */}
-                <div>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Question Topic & Solutions</span>
-                  <div className={`p-4 rounded-xl border text-sm overflow-y-auto max-h-60 whitespace-pre-wrap leading-relaxed ${
-                    theme === 'dark' ? 'bg-black/30 border-white/5 text-slate-200' : 'bg-slate-50 border-slate-200/90 text-slate-800 font-medium'
-                  }`}>
-                    {activeViewNote.question}
+                {activeViewNote.question && (
+                  <div>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5 flex items-center gap-1.5">
+                      <FileText size={13} className="text-indigo-400" />
+                      <span>Question Topic & Details</span>
+                    </span>
+                    <div className={`p-3.5 sm:p-4 rounded-xl border text-sm overflow-y-auto max-h-56 whitespace-pre-wrap leading-relaxed ${
+                      theme === 'dark' ? 'bg-black/30 border-white/10 text-slate-200' : 'bg-slate-50 border-slate-200 text-slate-800 font-medium'
+                    }`}>
+                      {activeViewNote.question}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Additional Resource Links (Only titles shown, clicking opens link) */}
+                {/* Attached Math & Question Images in View Modal */}
+                {((activeViewNote.questionImages && activeViewNote.questionImages.length > 0) || activeViewNote.questionImageUrl) && (
+                  <div className={`p-3.5 sm:p-4 rounded-xl border space-y-2.5 ${
+                    theme === 'dark' ? 'bg-indigo-950/20 border-indigo-500/20' : 'bg-indigo-50/40 border-indigo-200'
+                  }`}>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-300 dark:text-slate-200 uppercase tracking-wider flex items-center gap-1.5">
+                        <ImageIcon size={13} className="text-indigo-400" />
+                        <span>সংযুক্ত সমীকরণ ও ছবি ({(activeViewNote.questionImages?.length || (activeViewNote.questionImageUrl ? 1 : 0))})</span>
+                      </span>
+                      <span className="text-[10px] text-indigo-400 font-semibold">🔍 বড় করে দেখতে ক্লিক করুন</span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {(activeViewNote.questionImages || (activeViewNote.questionImageUrl ? [activeViewNote.questionImageUrl] : [])).map((imgUrl, i) => (
+                        <div 
+                          key={i}
+                          onClick={() => {
+                            setLightboxImageUrl(imgUrl);
+                            setLightboxImageTitle(`${activeViewNote.chatTitle} - সমীকরণ #${i + 1}`);
+                            setLightboxZoom(1);
+                          }}
+                          className="group relative rounded-xl overflow-hidden border border-indigo-500/30 aspect-video bg-black/50 cursor-pointer shadow-xs hover:border-indigo-400 transition-all hover:scale-102"
+                        >
+                          <img 
+                            src={imgUrl} 
+                            alt={`Math equation ${i + 1}`}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                            referrerPolicy="no-referrer"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 text-white text-xs font-bold">
+                            <ZoomIn size={15} />
+                            <span>Zoom</span>
+                          </div>
+                          <span className="absolute bottom-1 left-1 bg-black/75 text-white text-[9px] font-bold px-1.5 py-0.5 rounded">
+                            #{i + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Resource Links */}
                 {activeViewNote.additionalLinks && activeViewNote.additionalLinks.length > 0 && (
                   <div>
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
-                      <Globe size={12} className="text-indigo-400" />
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2 flex items-center gap-1.5">
+                      <Globe size={13} className="text-indigo-400" />
                       <span>Additional Resource Links ({activeViewNote.additionalLinks.length})</span>
                     </span>
                     <div className="flex flex-wrap gap-2">
@@ -2632,54 +2994,53 @@ export function EducationManager() {
                           href={link.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all border shadow-xs group cursor-pointer ${
+                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border shadow-xs group cursor-pointer ${
                             theme === 'dark'
-                              ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 hover:border-indigo-500/60'
+                              ? 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300 hover:bg-indigo-500/25 hover:border-indigo-400'
                               : 'bg-indigo-50 border-indigo-200 text-indigo-700 hover:bg-indigo-100 hover:border-indigo-300'
                           }`}
                           title={`Open ${link.title}`}
                         >
-                          <ExternalLink size={13} className="text-indigo-500 group-hover:scale-110 transition-transform shrink-0" />
-                          <span>{link.title}</span>
+                          <ExternalLink size={12} className="text-indigo-400 group-hover:scale-110 transition-transform shrink-0" />
+                          <span className="truncate max-w-[180px]">{link.title}</span>
                         </a>
                       ))}
                     </div>
                   </div>
                 )}
+              </div>
 
-                {/* Footer and Links */}
-                <div className="flex justify-between items-center pt-4 border-t border-slate-200/50 dark:border-white/5">
-                  <span className="text-[10px] text-slate-400">
-                    Logged: {new Date(activeViewNote.createdAt).toLocaleString()}
-                  </span>
+              {/* Footer */}
+              <div className="flex justify-between items-center px-5 sm:px-6 py-3.5 border-t border-slate-200/80 dark:border-white/10 shrink-0">
+                <span className="text-[11px] text-slate-400">
+                  {new Date(activeViewNote.createdAt).toLocaleDateString()}
+                </span>
 
-                  <div className="flex gap-2">
-                    {activeViewNote.chatLink && (
-                      <a
-                        href={activeViewNote.chatLink}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-4 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md"
-                      >
-                        <ExternalLink size={12} />
-                        <span>Open AI Chat</span>
-                      </a>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActiveViewNote(null);
-                        setIsViewNoteModalOpen(false);
-                      }}
-                      className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                        theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
-                      }`}
+                <div className="flex items-center gap-2">
+                  {activeViewNote.chatLink && (
+                    <a
+                      href={activeViewNote.chatLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20 cursor-pointer"
                     >
-                      Close
-                    </button>
-                  </div>
+                      <ExternalLink size={13} />
+                      <span>Open AI Chat</span>
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveViewNote(null);
+                      setIsViewNoteModalOpen(false);
+                    }}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      theme === 'dark' ? 'bg-white/5 hover:bg-white/10 text-slate-300' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    Close
+                  </button>
                 </div>
-
               </div>
             </motion.div>
           </div>
@@ -2985,6 +3346,108 @@ export function EducationManager() {
                 </button>
               </div>
             </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ==================== MATH EQUATION & IMAGE LIGHTBOX VIEWER ==================== */}
+      <AnimatePresence>
+        {lightboxImageUrl && (
+          <div 
+            onClick={() => setLightboxImageUrl(null)}
+            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] p-4 flex flex-col items-center justify-between"
+          >
+            {/* Top Toolbar */}
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-5xl flex items-center justify-between gap-4 py-2 px-4 rounded-2xl bg-black/60 border border-white/10 text-white shadow-2xl z-10"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <ImageIcon size={16} className="text-indigo-400 shrink-0" />
+                <span className="text-xs sm:text-sm font-bold truncate">
+                  {lightboxImageTitle || 'সমীকরণ ও প্রশ্ন প্রিভিউ'}
+                </span>
+              </div>
+
+              {/* Zoom and Action Controls */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom(prev => Math.max(0.5, prev - 0.25))}
+                  className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Zoom Out"
+                >
+                  <ZoomOut size={16} />
+                </button>
+
+                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-indigo-300 min-w-[50px] text-center">
+                  {Math.round(lightboxZoom * 100)}%
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom(prev => Math.min(3, prev + 0.25))}
+                  className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Zoom In"
+                >
+                  <ZoomIn size={16} />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setLightboxZoom(1)}
+                  className="px-2.5 py-1 text-xs font-bold rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Reset Zoom"
+                >
+                  Reset
+                </button>
+
+                <a
+                  href={lightboxImageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="নতুন ট্যাবে খুলুন"
+                >
+                  <ExternalLink size={16} />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => setLightboxImageUrl(null)}
+                  className="p-2 rounded-xl bg-white/10 hover:bg-red-500 text-white transition-colors cursor-pointer ml-2"
+                  title="বন্ধ করুন (Close)"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Centered High-Res Image with smooth zoom and scroll */}
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="flex-1 w-full max-w-5xl flex items-center justify-center p-2 overflow-auto my-2"
+            >
+              <div 
+                className="transition-transform duration-200 ease-out flex items-center justify-center"
+                style={{ transform: `scale(${lightboxZoom})`, transformOrigin: 'center center' }}
+              >
+                <img 
+                  src={lightboxImageUrl} 
+                  alt={lightboxImageTitle || "Math Equation High-Res View"}
+                  className="max-h-[75vh] max-w-[90vw] object-contain rounded-xl shadow-2xl border border-white/10 bg-slate-950"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
+
+            {/* Bottom Help Tip */}
+            <div 
+              onClick={(e) => e.stopPropagation()}
+              className="text-[11px] text-slate-400 bg-black/40 px-3 py-1 rounded-full border border-white/5"
+            >
+              ছবি জুম করতে + / - বোতাম ব্যবহার করুন অথবা Esc চাপুন
+            </div>
           </div>
         )}
       </AnimatePresence>
