@@ -368,10 +368,75 @@ export function EducationManager() {
   const [noteQuestionImages, setNoteQuestionImages] = useState<string[]>([]);
   const [isUploadingNoteImage, setIsUploadingNoteImage] = useState(false);
 
-  // Lightbox Modal for zooming in equation/question images
-  const [lightboxImageUrl, setLightboxImageUrl] = useState<string | null>(null);
+  // Lightbox Modal for viewing, navigating, and zooming in equation/question images
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState<number>(0);
   const [lightboxImageTitle, setLightboxImageTitle] = useState<string>('');
   const [lightboxZoom, setLightboxZoom] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartDistRef = useRef<number | null>(null);
+  const touchStartZoomRef = useRef<number>(1);
+  const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const lastTapTimeRef = useRef<number>(0);
+
+  // Helper to open lightbox with list of images and specific index
+  const openLightbox = (images: string[], initialIndex: number = 0, title: string = '') => {
+    if (!images || images.length === 0) return;
+    const safeIndex = Math.max(0, Math.min(initialIndex, images.length - 1));
+    setLightboxImages(images);
+    setLightboxIndex(safeIndex);
+    setLightboxImageTitle(title);
+    setLightboxZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const closeLightbox = () => {
+    setLightboxImages([]);
+    setLightboxIndex(0);
+    setLightboxZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handleNextLightboxImage = () => {
+    if (lightboxImages.length <= 1) return;
+    setLightboxIndex(prev => (prev + 1) % lightboxImages.length);
+    setLightboxZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  const handlePrevLightboxImage = () => {
+    if (lightboxImages.length <= 1) return;
+    setLightboxIndex(prev => (prev - 1 + lightboxImages.length) % lightboxImages.length);
+    setLightboxZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+  };
+
+  // Keyboard navigation & zoom handlers
+  useEffect(() => {
+    if (lightboxImages.length === 0) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeLightbox();
+      } else if (e.key === 'ArrowRight') {
+        handleNextLightboxImage();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevLightboxImage();
+      } else if (e.key === '+' || e.key === '=') {
+        setLightboxZoom(prev => Math.min(4, prev + 0.25));
+      } else if (e.key === '-') {
+        setLightboxZoom(prev => Math.max(0.5, prev - 0.25));
+      } else if (e.key === '0' || e.key.toLowerCase() === 'r') {
+        setLightboxZoom(1);
+        setPanOffset({ x: 0, y: 0 });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxImages.length]);
 
   // Upload and attach image to Note form
   const uploadAndAddNoteImage = async (file: File) => {
@@ -453,18 +518,6 @@ export function EducationManager() {
       window.removeEventListener('paste', handleNoteModalGlobalPaste);
     };
   }, [isNoteModalOpen]);
-
-  // Escape key handler to close lightbox
-  useEffect(() => {
-    if (!lightboxImageUrl) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setLightboxImageUrl(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [lightboxImageUrl]);
 
   const handleAddAdditionalLink = () => {
     const trimmedTitle = newLinkTitle.trim();
@@ -1670,9 +1723,8 @@ export function EducationManager() {
                                   key={i}
                                   type="button"
                                   onClick={() => {
-                                    setLightboxImageUrl(imgUrl);
-                                    setLightboxImageTitle(`${note.chatTitle} - সমীকরণ #${i + 1}`);
-                                    setLightboxZoom(1);
+                                    const allImages = note.questionImages && note.questionImages.length > 0 ? note.questionImages : (note.questionImageUrl ? [note.questionImageUrl] : []);
+                                    openLightbox(allImages, i, note.chatTitle);
                                   }}
                                   className="shrink-0 w-16 h-12 rounded-lg overflow-hidden border border-indigo-500/30 relative group shadow-xs cursor-pointer"
                                   title="বড় করে সমীকরণ দেখুন"
@@ -1907,13 +1959,11 @@ export function EducationManager() {
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      const imgUrl = note.questionImages?.[0] || note.questionImageUrl || '';
-                                      setLightboxImageUrl(imgUrl);
-                                      setLightboxImageTitle(`${note.chatTitle} - সমীকরণ ছবি`);
-                                      setLightboxZoom(1);
+                                      const allImages = note.questionImages && note.questionImages.length > 0 ? note.questionImages : (note.questionImageUrl ? [note.questionImageUrl] : []);
+                                      openLightbox(allImages, 0, note.chatTitle);
                                     }}
                                     className="group/img relative shrink-0 w-8 h-8 rounded-lg overflow-hidden border border-indigo-500/30 hover:border-indigo-500 transition-all hover:scale-110 shadow-xs cursor-pointer bg-black/30"
-                                    title="বড় করে সমীকরণের ছবি দেখুন"
+                                    title="বড় করে সমীকরণের ছবি দেখুন (Gallery)"
                                   >
                                     <img 
                                       src={note.questionImages?.[0] || note.questionImageUrl} 
@@ -1931,9 +1981,18 @@ export function EducationManager() {
                                     {note.question}
                                   </span>
                                   {note.questionImages && note.questionImages.length > 1 && (
-                                    <span className="text-[10px] text-indigo-500 dark:text-indigo-400 font-bold block">
-                                      +{note.questionImages.length - 1} আরও ছবি
-                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const allImages = note.questionImages && note.questionImages.length > 0 ? note.questionImages : (note.questionImageUrl ? [note.questionImageUrl] : []);
+                                        openLightbox(allImages, 0, note.chatTitle);
+                                      }}
+                                      className="text-[10px] text-indigo-500 hover:text-indigo-400 dark:text-indigo-400 dark:hover:text-indigo-300 font-bold block cursor-pointer hover:underline text-left"
+                                      title="সবগুলো সমীকরণ ও ছবি দেখুন"
+                                    >
+                                      +{note.questionImages.length - 1} আরও ছবি (সব দেখুন)
+                                    </button>
                                   )}
                                 </div>
                               </div>
@@ -2597,9 +2656,7 @@ export function EducationManager() {
                             <button
                               type="button"
                               onClick={() => {
-                                setLightboxImageUrl(imgUrl);
-                                setLightboxImageTitle(`সমীকরণ #${index + 1}`);
-                                setLightboxZoom(1);
+                                openLightbox(noteQuestionImages, index, 'সমীকরণ ও প্রশ্ন প্রিভিউ');
                               }}
                               className="p-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white transition-all cursor-pointer"
                               title="Zoom"
@@ -2955,9 +3012,8 @@ export function EducationManager() {
                         <div 
                           key={i}
                           onClick={() => {
-                            setLightboxImageUrl(imgUrl);
-                            setLightboxImageTitle(`${activeViewNote.chatTitle} - সমীকরণ #${i + 1}`);
-                            setLightboxZoom(1);
+                            const allImages = activeViewNote.questionImages && activeViewNote.questionImages.length > 0 ? activeViewNote.questionImages : (activeViewNote.questionImageUrl ? [activeViewNote.questionImageUrl] : []);
+                            openLightbox(allImages, i, activeViewNote.chatTitle);
                           }}
                           className="group relative rounded-xl overflow-hidden border border-indigo-500/30 aspect-video bg-black/50 cursor-pointer shadow-xs hover:border-indigo-400 transition-all hover:scale-102"
                         >
@@ -3350,105 +3406,269 @@ export function EducationManager() {
         )}
       </AnimatePresence>
 
-      {/* ==================== MATH EQUATION & IMAGE LIGHTBOX VIEWER ==================== */}
+      {/* ==================== MATH EQUATION & IMAGE LIGHTBOX VIEWER WITH PINCH-ZOOM & NAVIGATION ==================== */}
       <AnimatePresence>
-        {lightboxImageUrl && (
-          <div 
-            onClick={() => setLightboxImageUrl(null)}
-            className="fixed inset-0 bg-black/90 backdrop-blur-md z-[100] p-4 flex flex-col items-center justify-between"
+        {lightboxImages.length > 0 && lightboxImages[lightboxIndex] && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeLightbox}
+            className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex flex-col items-center justify-between p-1.5 sm:p-4 select-none touch-none"
           >
-            {/* Top Toolbar */}
+            {/* Top Compact Toolbar */}
             <div 
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-5xl flex items-center justify-between gap-4 py-2 px-4 rounded-2xl bg-black/60 border border-white/10 text-white shadow-2xl z-10"
+              className="w-full max-w-5xl flex items-center justify-between gap-1.5 sm:gap-4 py-1.5 sm:py-2 px-2.5 sm:px-4 rounded-xl sm:rounded-2xl bg-black/80 border border-white/15 text-white shadow-2xl z-20 backdrop-blur-xl shrink-0"
             >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <ImageIcon size={16} className="text-indigo-400 shrink-0" />
-                <span className="text-xs sm:text-sm font-bold truncate">
-                  {lightboxImageTitle || 'সমীকরণ ও প্রশ্ন প্রিভিউ'}
-                </span>
+              <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 flex-1">
+                <div className="p-1 sm:p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400 shrink-0">
+                  <ImageIcon size={14} className="sm:w-4 sm:h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h4 className="text-xs sm:text-sm font-bold truncate text-slate-100">
+                    {lightboxImageTitle || 'সমীকরণ ও প্রশ্নের ছবি'}
+                  </h4>
+                  {lightboxImages.length > 1 && (
+                    <span className="text-[9px] sm:text-[10px] text-indigo-400 font-mono font-bold block leading-none mt-0.5">
+                      ছবি {lightboxIndex + 1} / {lightboxImages.length}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Zoom and Action Controls */}
-              <div className="flex items-center gap-1.5 shrink-0">
+              <div className="flex items-center gap-0.5 sm:gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setLightboxZoom(prev => Math.max(0.5, prev - 0.25))}
-                  className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  title="Zoom Out"
+                  className="p-1 sm:p-1.5 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Zoom Out (-)"
                 >
-                  <ZoomOut size={16} />
+                  <ZoomOut size={14} className="sm:w-4 sm:h-4" />
                 </button>
 
-                <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-white/10 text-indigo-300 min-w-[50px] text-center">
+                <span className="text-[10px] sm:text-xs font-mono font-bold px-1 sm:px-2 py-0.5 rounded bg-white/10 text-indigo-300 min-w-[34px] sm:min-w-[46px] text-center">
                   {Math.round(lightboxZoom * 100)}%
                 </span>
 
                 <button
                   type="button"
-                  onClick={() => setLightboxZoom(prev => Math.min(3, prev + 0.25))}
-                  className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  title="Zoom In"
+                  onClick={() => setLightboxZoom(prev => Math.min(4, prev + 0.25))}
+                  className="p-1 sm:p-1.5 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  title="Zoom In (+)"
                 >
-                  <ZoomIn size={16} />
+                  <ZoomIn size={14} className="sm:w-4 sm:h-4" />
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setLightboxZoom(1)}
-                  className="px-2.5 py-1 text-xs font-bold rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                  title="Reset Zoom"
-                >
-                  Reset
-                </button>
+                {(lightboxZoom !== 1 || panOffset.x !== 0 || panOffset.y !== 0) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setLightboxZoom(1);
+                      setPanOffset({ x: 0, y: 0 });
+                    }}
+                    className="px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs font-bold rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 transition-colors cursor-pointer"
+                    title="Reset Zoom (0 / R)"
+                  >
+                    Reset
+                  </button>
+                )}
 
                 <a
-                  href={lightboxImageUrl}
+                  href={lightboxImages[lightboxIndex]}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-2 rounded-xl hover:bg-white/10 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                  className="p-1 sm:p-1.5 rounded-lg hover:bg-white/15 text-slate-300 hover:text-white transition-colors cursor-pointer hidden xs:flex items-center"
                   title="নতুন ট্যাবে খুলুন"
                 >
-                  <ExternalLink size={16} />
+                  <ExternalLink size={14} className="sm:w-4 sm:h-4" />
                 </a>
 
                 <button
                   type="button"
-                  onClick={() => setLightboxImageUrl(null)}
-                  className="p-2 rounded-xl bg-white/10 hover:bg-red-500 text-white transition-colors cursor-pointer ml-2"
-                  title="বন্ধ করুন (Close)"
+                  onClick={closeLightbox}
+                  className="p-1 sm:p-1.5 rounded-lg bg-white/10 hover:bg-red-500 text-white transition-colors cursor-pointer ml-0.5 sm:ml-1"
+                  title="বন্ধ করুন (Esc)"
                 >
-                  <X size={16} />
+                  <X size={15} className="sm:w-4 sm:h-4" />
                 </button>
               </div>
             </div>
 
-            {/* Centered High-Res Image with smooth zoom and scroll */}
+            {/* Main Stage with Navigation Arrows and Pinch/Zoom/Pan Image */}
             <div 
-              onClick={(e) => e.stopPropagation()}
-              className="flex-1 w-full max-w-5xl flex items-center justify-center p-2 overflow-auto my-2"
+              className="relative flex-1 w-full max-w-6xl flex items-center justify-center overflow-hidden my-1 sm:my-2 cursor-grab active:cursor-grabbing"
+              onClick={(e) => {
+                if (e.target === e.currentTarget) {
+                  closeLightbox();
+                }
+              }}
+              onWheel={(e) => {
+                e.stopPropagation();
+                const delta = e.deltaY < 0 ? 0.2 : -0.2;
+                setLightboxZoom(prev => Math.min(4, Math.max(0.5, prev + delta)));
+              }}
+              onMouseDown={(e) => {
+                if (lightboxZoom > 1) {
+                  isDraggingRef.current = true;
+                  dragStartRef.current = { x: e.clientX - panOffset.x, y: e.clientY - panOffset.y };
+                }
+              }}
+              onMouseMove={(e) => {
+                if (isDraggingRef.current && lightboxZoom > 1) {
+                  setPanOffset({
+                    x: e.clientX - dragStartRef.current.x,
+                    y: e.clientY - dragStartRef.current.y
+                  });
+                }
+              }}
+              onMouseUp={() => {
+                isDraggingRef.current = false;
+              }}
+              onTouchStart={(e) => {
+                if (e.touches.length === 2) {
+                  // Two-finger pinch gesture
+                  const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                  );
+                  touchStartDistRef.current = dist;
+                  touchStartZoomRef.current = lightboxZoom;
+                } else if (e.touches.length === 1) {
+                  touchStartDistRef.current = null;
+                  touchStartPosRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                  dragStartRef.current = { x: e.touches[0].clientX - panOffset.x, y: e.touches[0].clientY - panOffset.y };
+
+                  // Detect double tap (< 300ms) to toggle zoom
+                  const now = Date.now();
+                  if (now - lastTapTimeRef.current < 300) {
+                    if (lightboxZoom > 1.1) {
+                      setLightboxZoom(1);
+                      setPanOffset({ x: 0, y: 0 });
+                    } else {
+                      setLightboxZoom(2.2);
+                    }
+                  }
+                  lastTapTimeRef.current = now;
+                }
+              }}
+              onTouchMove={(e) => {
+                if (e.touches.length === 2 && touchStartDistRef.current) {
+                  const currentDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                  );
+                  const scaleFactor = currentDist / touchStartDistRef.current;
+                  const newZoom = Math.min(4, Math.max(0.5, touchStartZoomRef.current * scaleFactor));
+                  setLightboxZoom(newZoom);
+                } else if (e.touches.length === 1 && lightboxZoom > 1) {
+                  const newX = e.touches[0].clientX - dragStartRef.current.x;
+                  const newY = e.touches[0].clientY - dragStartRef.current.y;
+                  setPanOffset({ x: newX, y: newY });
+                }
+              }}
+              onTouchEnd={(e) => {
+                if (e.touches.length === 0) {
+                  touchStartDistRef.current = null;
+                  if (lightboxZoom <= 1.1 && touchStartPosRef.current && e.changedTouches[0]) {
+                    const deltaX = e.changedTouches[0].clientX - touchStartPosRef.current.x;
+                    const deltaY = e.changedTouches[0].clientY - touchStartPosRef.current.y;
+                    if (Math.abs(deltaX) > 45 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+                      if (deltaX < 0) {
+                        handleNextLightboxImage();
+                      } else {
+                        handlePrevLightboxImage();
+                      }
+                    }
+                  }
+                }
+              }}
             >
+              {/* Previous Image Navigation Arrow (Compact sleek size) */}
+              {lightboxImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePrevLightboxImage();
+                  }}
+                  className="absolute left-1 sm:left-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-indigo-600/90 text-white/90 hover:text-white backdrop-blur-md border border-white/15 transition-all shadow-lg hover:scale-105 active:scale-95 cursor-pointer"
+                  title="আগের ছবি (Left Arrow)"
+                >
+                  <ChevronLeft size={16} className="sm:w-5 sm:h-5" />
+                </button>
+              )}
+
+              {/* Next Image Navigation Arrow (Compact sleek size) */}
+              {lightboxImages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleNextLightboxImage();
+                  }}
+                  className="absolute right-1 sm:right-3 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center rounded-full bg-black/50 hover:bg-indigo-600/90 text-white/90 hover:text-white backdrop-blur-md border border-white/15 transition-all shadow-lg hover:scale-105 active:scale-95 cursor-pointer"
+                  title="পরের ছবি (Right Arrow)"
+                >
+                  <ChevronRight size={16} className="sm:w-5 sm:h-5" />
+                </button>
+              )}
+
+              {/* Rendered Image with dynamic CSS transform & pan */}
               <div 
-                className="transition-transform duration-200 ease-out flex items-center justify-center"
-                style={{ transform: `scale(${lightboxZoom})`, transformOrigin: 'center center' }}
+                className="flex items-center justify-center transition-transform duration-100 will-change-transform"
+                style={{ 
+                  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${lightboxZoom})`,
+                  transformOrigin: 'center center' 
+                }}
               >
                 <img 
-                  src={lightboxImageUrl} 
-                  alt={lightboxImageTitle || "Math Equation High-Res View"}
-                  className="max-h-[75vh] max-w-[90vw] object-contain rounded-xl shadow-2xl border border-white/10 bg-slate-950"
+                  src={lightboxImages[lightboxIndex]} 
+                  alt={`Math Equation ${lightboxIndex + 1}`}
+                  className="max-h-[80vh] sm:max-h-[76vh] max-w-[96vw] sm:max-w-[90vw] object-contain rounded-lg sm:rounded-xl shadow-2xl border border-white/10 bg-slate-950 pointer-events-none"
                   referrerPolicy="no-referrer"
                 />
               </div>
             </div>
 
-            {/* Bottom Help Tip */}
-            <div 
-              onClick={(e) => e.stopPropagation()}
-              className="text-[11px] text-slate-400 bg-black/40 px-3 py-1 rounded-full border border-white/5"
-            >
-              ছবি জুম করতে + / - বোতাম ব্যবহার করুন অথবা Esc চাপুন
-            </div>
-          </div>
+            {/* Bottom Gallery Thumbnail Strip (If multiple images) */}
+            {lightboxImages.length > 1 && (
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-5xl flex flex-col items-center z-20 shrink-0 pb-0.5"
+              >
+                <div className="flex items-center gap-1.5 sm:gap-2 p-1 sm:p-1.5 rounded-xl sm:rounded-2xl bg-black/80 border border-white/10 backdrop-blur-xl max-w-full overflow-x-auto">
+                  {lightboxImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setLightboxIndex(idx);
+                        setLightboxZoom(1);
+                        setPanOffset({ x: 0, y: 0 });
+                      }}
+                      className={`relative shrink-0 w-10 sm:w-14 h-7 sm:h-10 rounded-md sm:rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                        lightboxIndex === idx 
+                          ? 'border-indigo-400 scale-105 shadow-md shadow-indigo-500/40' 
+                          : 'border-white/20 opacity-60 hover:opacity-100'
+                      }`}
+                    >
+                      <img 
+                        src={img} 
+                        alt={`Thumb ${idx + 1}`} 
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                      />
+                      <span className="absolute bottom-0 right-0 bg-black/80 text-[7px] sm:text-[8px] font-bold text-white px-0.5 sm:px-1 rounded-tl leading-tight">
+                        #{idx + 1}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </motion.div>
         )}
       </AnimatePresence>
 
